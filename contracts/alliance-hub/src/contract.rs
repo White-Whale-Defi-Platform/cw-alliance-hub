@@ -53,7 +53,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
 
     if storage_version <= Version::parse("0.1.1")? {
         // parse operator address
-        let operator = deps.api.addr_validate(&msg.operator.as_str())?;
+        let operator = deps.api.addr_validate(msg.operator.as_str())?;
 
         #[cw_serde]
         pub struct ConfigV010 {

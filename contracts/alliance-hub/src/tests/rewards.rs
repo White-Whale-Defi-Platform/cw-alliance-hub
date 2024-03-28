@@ -597,7 +597,7 @@ fn test_set_asset_reward_distribution() {
     // only the governance or operator can set the asset reward distribution
     assert_eq!(err, ContractError::Unauthorized {});
 
-    let res = execute(
+    execute(
         deps.as_mut(),
         mock_env(),
         mock_info("operator", &[]),
@@ -608,7 +608,7 @@ fn test_set_asset_reward_distribution() {
     let reward_distribution = query_asset_reward_distribution(deps.as_ref());
     assert_eq!(reward_distribution, asset_distribution_1());
 
-    let res = execute(
+    execute(
         deps.as_mut(),
         mock_env(),
         mock_info("operator", &[]),
@@ -619,7 +619,7 @@ fn test_set_asset_reward_distribution() {
     let reward_distribution = query_asset_reward_distribution(deps.as_ref());
     assert_eq!(reward_distribution, asset_distribution_2());
 
-    let res = execute(
+    execute(
         deps.as_mut(),
         mock_env(),
         mock_info("gov", &[]),
