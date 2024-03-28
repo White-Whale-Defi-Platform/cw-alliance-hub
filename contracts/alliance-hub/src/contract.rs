@@ -1,5 +1,24 @@
+use std::collections::{HashMap, HashSet};
+
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use cosmwasm_std::{
+    ensure, from_binary, to_binary, Addr, Binary, Coin as CwCoin, CosmosMsg, Decimal, DepsMut,
+    Empty, Env, MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Timestamp,
+    Uint128, WasmMsg,
+};
+use cw2::{get_contract_version, set_contract_version};
+use cw20::Cw20ReceiveMsg;
+use cw_asset::{Asset, AssetInfo, AssetInfoBase, AssetInfoKey};
+use cw_storage_plus::Item;
+use cw_utils::parse_instantiate_response_data;
+use semver::Version;
+use terra_proto_rs::alliance::alliance::{
+    MsgClaimDelegationRewards, MsgDelegate, MsgRedelegate, MsgUndelegate,
+};
+use terra_proto_rs::cosmos::base::v1beta1::Coin;
+use terra_proto_rs::traits::Message;
 
 // use alliance_protocol::alliance_oracle_types::QueryMsg as OracleQueryMsg;
 use alliance_protocol::alliance_oracle_types::ChainId;
@@ -7,15 +26,7 @@ use alliance_protocol::alliance_protocol::{
     AllianceDelegateMsg, AllianceRedelegateMsg, AllianceUndelegateMsg, AssetDistribution, Config,
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
 };
-use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Coin as CwCoin, CosmosMsg, Decimal, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Timestamp, Uint128,
-    WasmMsg,
-};
-use cw2::set_contract_version;
-use cw_asset::{Asset, AssetInfo, AssetInfoBase, AssetInfoKey};
-use cw_utils::parse_instantiate_response_data;
-use std::collections::{HashMap, HashSet};
+
 // use alliance_protocol::alliance_oracle_types::{AssetStaked, ChainId, EmissionsDistribution};
 use crate::error::ContractError;
 use crate::state::{
@@ -23,12 +34,6 @@ use crate::state::{
     UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
 };
 use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
-use cw20::Cw20ReceiveMsg;
-use terra_proto_rs::alliance::alliance::{
-    MsgClaimDelegationRewards, MsgDelegate, MsgRedelegate, MsgUndelegate,
-};
-use terra_proto_rs::cosmos::base::v1beta1::Coin;
-use terra_proto_rs::traits::Message;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:terra-alliance-protocol";
@@ -37,7 +42,46 @@ const CREATE_REPLY_ID: u64 = 1;
 const CLAIM_REWARD_ERROR_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    ensure!(
+        storage_version < version,
+        StdError::generic_err("Invalid contract version")
+    );
+
+    if storage_version <= Version::parse("0.1.1")? {
+        // parse operator address
+        let operator = deps.api.addr_validate(msg.operator.as_str())?;
+
+        #[cw_serde]
+        pub struct ConfigV010 {
+            pub governance: Addr,
+            pub controller: Addr,
+            pub oracle: Addr,
+            pub last_reward_update_timestamp: Timestamp,
+            pub alliance_token_denom: String,
+            pub alliance_token_supply: Uint128,
+            pub reward_denom: String,
+        }
+        const CONFIG_V010: Item<ConfigV010> = Item::new("config");
+        let config_v010 = CONFIG_V010.load(deps.storage)?;
+
+        let config = Config {
+            governance: config_v010.governance,
+            controller: config_v010.controller,
+            oracle: config_v010.oracle,
+            operator,
+            last_reward_update_timestamp: config_v010.last_reward_update_timestamp,
+            alliance_token_denom: config_v010.alliance_token_denom,
+            alliance_token_supply: config_v010.alliance_token_supply,
+            reward_denom: config_v010.reward_denom,
+        };
+        CONFIG.save(deps.storage, &config)?;
+    }
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
 }
 
@@ -52,6 +96,7 @@ pub fn instantiate(
     let governance_address = deps.api.addr_validate(msg.governance.as_str())?;
     let controller_address = deps.api.addr_validate(msg.controller.as_str())?;
     let oracle_address = deps.api.addr_validate(msg.oracle.as_str())?;
+    let operator_address = deps.api.addr_validate(msg.operator.as_str())?;
     let create_msg = TokenExecuteMsg::CreateDenom {
         subdenom: msg.alliance_token_denom.to_string(),
     };
@@ -77,6 +122,7 @@ pub fn instantiate(
         governance: governance_address,
         controller: controller_address,
         oracle: oracle_address,
+        operator: operator_address,
         alliance_token_denom: "".to_string(),
         alliance_token_supply: Uint128::zero(),
         last_reward_update_timestamp: Timestamp::default(),
@@ -168,7 +214,7 @@ fn set_asset_reward_distribution(
     asset_reward_distribution: Vec<AssetDistribution>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    is_governance(&info, &config)?;
+    is_authorized(&info, &config)?;
 
     // Ensure the dsitributions add up to 100%
     let total_distribution = asset_reward_distribution
@@ -773,5 +819,14 @@ fn is_governance(info: &MessageInfo, config: &Config) -> Result<(), ContractErro
     if info.sender != config.governance {
         return Err(ContractError::Unauthorized {});
     }
+    Ok(())
+}
+
+// Only governance or the operator can pass through this function
+fn is_authorized(info: &MessageInfo, config: &Config) -> Result<(), ContractError> {
+    ensure!(
+        info.sender == config.governance || info.sender == config.operator,
+        ContractError::Unauthorized {}
+    );
     Ok(())
 }

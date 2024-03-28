@@ -15,7 +15,7 @@ dependencies = [
 
 [[package]]
 name = "alliance-hub"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alliance-protocol",
  "cosmwasm-schema",
@@ -28,6 +28,7 @@ dependencies = [
  "cw20 1.1.1",
  "cw20-base",
  "schemars",
+ "semver",
  "serde",
  "terra-proto-rs",
  "thiserror",
@@ -825,9 +826,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.17"
+version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
+checksum = "92d43fe69e652f3df9bdc2b85b2854a0825b86e4fb76bc44d945137d053639ca"
 
 [[package]]
 name = "serde"

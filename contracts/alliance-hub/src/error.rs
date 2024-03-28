@@ -36,4 +36,13 @@ pub enum ContractError {
 
     #[error("Invalid Distribution")]
     InvalidDistribution {},
+
+    #[error("Semver parsing error: {0}")]
+    SemVer(String),
+}
+
+impl From<semver::Error> for ContractError {
+    fn from(err: semver::Error) -> Self {
+        Self::SemVer(err.to_string())
+    }
 }

@@ -1,22 +1,27 @@
-use crate::contract::execute;
-use crate::state::{
-    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, TEMP_BALANCE, TOTAL_BALANCES,
-    USER_ASSET_REWARD_RATE, VALIDATORS,
-};
-use crate::tests::helpers::{
-    claim_rewards, query_all_rewards, query_rewards, set_alliance_asset, setup_contract, stake,
-    unstake, whitelist_assets, DENOM,
-};
-use alliance_protocol::alliance_protocol::{AssetDistribution, ExecuteMsg, PendingRewardsRes};
+use std::collections::{HashMap, HashSet};
+
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
 use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg, Uint128,
     WasmMsg,
 };
 use cw_asset::{AssetInfo, AssetInfoKey};
-use std::collections::{HashMap, HashSet};
 use terra_proto_rs::alliance::alliance::MsgClaimDelegationRewards;
 use terra_proto_rs::traits::Message;
+
+use alliance_protocol::alliance_protocol::{AssetDistribution, ExecuteMsg, PendingRewardsRes};
+
+use crate::contract::execute;
+use crate::error::ContractError;
+use crate::state::{
+    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, TEMP_BALANCE, TOTAL_BALANCES,
+    USER_ASSET_REWARD_RATE, VALIDATORS,
+};
+use crate::tests::helpers::{
+    asset_distribution_1, asset_distribution_2, asset_distribution_broken_1,
+    asset_distribution_broken_2, claim_rewards, query_all_rewards, query_asset_reward_distribution,
+    query_rewards, set_alliance_asset, setup_contract, stake, unstake, whitelist_assets, DENOM,
+};
 
 #[test]
 fn test_update_rewards() {
@@ -51,15 +56,15 @@ fn test_update_rewards() {
                             denom: DENOM.to_string(),
                         }
                         .encode_to_vec()
-                    )
+                    ),
                 },
-                2
+                2,
             ),
             SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 funds: vec![],
                 contract_addr: "cosmos2contract".to_string(),
-                msg: to_binary(&ExecuteMsg::UpdateRewardsCallback {}).unwrap()
-            }))
+                msg: to_binary(&ExecuteMsg::UpdateRewardsCallback {}).unwrap(),
+            })),
         ]
     );
     let prev_balance = TEMP_BALANCE.load(deps.as_ref().storage).unwrap();
@@ -174,7 +179,7 @@ fn update_reward_callback() {
 
     assert_eq!(
         res,
-        Response::new().add_attributes(vec![("action", "update_rewards_callback"),])
+        Response::new().add_attributes(vec![("action", "update_rewards_callback")])
     );
 }
 
@@ -573,4 +578,75 @@ fn claim_rewards_after_rebalancing_emissions() {
     // User 2 should receive all the rewards in the contract
     let rewards = query_rewards(deps.as_ref(), "user2", "bWHALE");
     assert_eq!(rewards.rewards, Uint128::new(500000));
+}
+
+#[test]
+fn test_set_asset_reward_distribution() {
+    let mut deps = mock_dependencies_with_balance(&[coin(2000000, "uluna")]);
+    setup_contract(deps.as_mut());
+    set_alliance_asset(deps.as_mut());
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("unauthorized", &[]),
+        ExecuteMsg::SetAssetRewardDistribution(asset_distribution_1()),
+    )
+    .unwrap_err();
+
+    // only the governance or operator can set the asset reward distribution
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("operator", &[]),
+        ExecuteMsg::SetAssetRewardDistribution(asset_distribution_1()),
+    )
+    .unwrap();
+
+    let reward_distribution = query_asset_reward_distribution(deps.as_ref());
+    assert_eq!(reward_distribution, asset_distribution_1());
+
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("operator", &[]),
+        ExecuteMsg::SetAssetRewardDistribution(asset_distribution_2()),
+    )
+    .unwrap();
+
+    let reward_distribution = query_asset_reward_distribution(deps.as_ref());
+    assert_eq!(reward_distribution, asset_distribution_2());
+
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("gov", &[]),
+        ExecuteMsg::SetAssetRewardDistribution(asset_distribution_1()),
+    )
+    .unwrap();
+
+    let reward_distribution = query_asset_reward_distribution(deps.as_ref());
+    assert_eq!(reward_distribution, asset_distribution_1());
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("gov", &[]),
+        ExecuteMsg::SetAssetRewardDistribution(asset_distribution_broken_1()),
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidDistribution {});
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("gov", &[]),
+        ExecuteMsg::SetAssetRewardDistribution(asset_distribution_broken_2()),
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidDistribution {});
 }
