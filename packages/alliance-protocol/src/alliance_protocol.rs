@@ -1,6 +1,6 @@
 use crate::alliance_oracle_types::ChainId;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Binary, Decimal, Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo};
 use std::collections::{HashMap, HashSet};
@@ -10,6 +10,7 @@ pub struct Config {
     pub governance: Addr,
     pub controller: Addr,
     pub oracle: Addr,
+    pub operator: Addr,
     pub last_reward_update_timestamp: Timestamp,
     pub alliance_token_denom: String,
     pub alliance_token_supply: Uint128,
@@ -28,6 +29,7 @@ pub struct InstantiateMsg {
     pub controller: String,
     pub alliance_token_denom: String,
     pub oracle: String,
+    pub operator: String,
     pub reward_denom: String,
 }
 
@@ -137,7 +139,9 @@ pub struct AllPendingRewardsQuery {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub params: Binary,
+}
 
 #[cw_serde]
 pub struct StakedBalanceRes {

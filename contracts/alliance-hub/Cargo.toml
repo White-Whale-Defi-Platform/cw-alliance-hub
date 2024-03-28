@@ -1,6 +1,6 @@
 [package]
 name = "alliance-hub"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Terra Money <core@terra.money>"]
 edition = "2018"
 
@@ -26,6 +26,7 @@ schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 alliance-protocol = { workspace = true }
+semver = { workspace = true }
 
 cw2 = "1.0.1"
 cw20 = "1.0.1"

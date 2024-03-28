@@ -41,5 +41,6 @@ terra-proto-rs = { version = "3.0.1", default-features = false}
 thiserror = { version = "1.0.38" }
 cw2 = "1.0.1"
 cw20 ="1.0.1"
+semver = "1.0.22"
 
 alliance-protocol = { path = "./packages/alliance-protocol" }
