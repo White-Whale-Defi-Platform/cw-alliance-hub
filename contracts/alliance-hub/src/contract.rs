@@ -53,9 +53,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
 
     if storage_version <= Version::parse("0.1.1")? {
         // parse operator address
-        let operator = deps
-            .api
-            .addr_validate(&from_binary::<String>(&msg.params)?)?;
+        let operator = deps.api.addr_validate(&msg.operator.as_str())?;
 
         #[cw_serde]
         pub struct ConfigV010 {
@@ -70,20 +68,17 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
         const CONFIG_V010: Item<ConfigV010> = Item::new("config");
         let config_v010 = CONFIG_V010.load(deps.storage)?;
 
-        CONFIG.update(deps.storage, |mut config| -> StdResult<_> {
-            // add operator to the new config
-            config.operator = operator;
-
-            config.governance = config_v010.governance;
-            config.controller = config_v010.controller;
-            config.oracle = config_v010.oracle;
-            config.last_reward_update_timestamp = config_v010.last_reward_update_timestamp;
-            config.alliance_token_denom = config_v010.alliance_token_denom;
-            config.alliance_token_supply = config_v010.alliance_token_supply;
-            config.reward_denom = config_v010.reward_denom;
-
-            Ok(config)
-        })?;
+        let config = Config {
+            governance: config_v010.governance,
+            controller: config_v010.controller,
+            oracle: config_v010.oracle,
+            operator,
+            last_reward_update_timestamp: config_v010.last_reward_update_timestamp,
+            alliance_token_denom: config_v010.alliance_token_denom,
+            alliance_token_supply: config_v010.alliance_token_supply,
+            reward_denom: config_v010.reward_denom,
+        };
+        CONFIG.save(deps.storage, &config)?;
     }
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

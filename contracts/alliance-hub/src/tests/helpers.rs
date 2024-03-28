@@ -1,18 +1,23 @@
+use std::collections::HashMap;
+
+use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{
+    coin, from_binary, to_binary, Decimal, Deps, DepsMut, Response, StdResult, Uint128,
+};
+use cw20::Cw20ReceiveMsg;
+use cw_asset::{Asset, AssetInfo};
+
+use alliance_protocol::alliance_oracle_types::ChainId;
+use alliance_protocol::alliance_protocol::{
+    AllPendingRewardsQuery, AllianceDelegateMsg, AllianceDelegation, AllianceRedelegateMsg,
+    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetQuery, Config,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes, QueryMsg, StakedBalanceRes,
+};
+
 use crate::contract::{execute, instantiate};
 use crate::query::query;
 use crate::state::CONFIG;
 use crate::token_factory::CustomExecuteMsg;
-use alliance_protocol::alliance_oracle_types::ChainId;
-use alliance_protocol::alliance_protocol::{
-    AllPendingRewardsQuery, AllianceDelegateMsg, AllianceDelegation, AllianceRedelegateMsg,
-    AllianceRedelegation, AllianceUndelegateMsg, AssetQuery, Config, Cw20HookMsg, ExecuteMsg,
-    InstantiateMsg, PendingRewardsRes, QueryMsg, StakedBalanceRes,
-};
-use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{coin, from_binary, to_binary, Deps, DepsMut, Response, StdResult, Uint128};
-use cw20::Cw20ReceiveMsg;
-use cw_asset::{Asset, AssetInfo};
-use std::collections::HashMap;
 
 pub const DENOM: &str = "token_factory/token";
 
@@ -24,6 +29,7 @@ pub fn setup_contract(deps: DepsMut) -> Response<CustomExecuteMsg> {
         governance: "gov".to_string(),
         controller: "controller".to_string(),
         oracle: "oracle".to_string(),
+        operator: "operator".to_string(),
         alliance_token_denom: "ualliance".to_string(),
         reward_denom: "uluna".to_string(),
     };
@@ -64,6 +70,7 @@ pub fn stake(deps: DepsMut, user: &str, amount: u128, denom: &str) -> Response {
     let msg = ExecuteMsg::Stake {};
     execute(deps, env, info, msg).unwrap()
 }
+
 pub fn stake_cw20(deps: DepsMut, user: &str, amount: u128, denom: &str) -> Response {
     let info = mock_info(denom, &[]);
     let env = mock_env();
@@ -172,4 +179,68 @@ pub fn query_all_rewards(deps: Deps, user: &str) -> Vec<PendingRewardsRes> {
 
 pub fn query_all_staked_balances(deps: Deps) -> Vec<StakedBalanceRes> {
     from_binary(&query(deps, mock_env(), QueryMsg::TotalStakedBalances {}).unwrap()).unwrap()
+}
+
+pub fn query_asset_reward_distribution(deps: Deps) -> Vec<AssetDistribution> {
+    from_binary(&query(deps, mock_env(), QueryMsg::RewardDistribution {}).unwrap()).unwrap()
+}
+
+#[inline]
+pub fn asset_distribution_1() -> Vec<AssetDistribution> {
+    vec![
+        AssetDistribution {
+            asset: AssetInfo::Native("aWHALE".to_string()),
+            distribution: Decimal::percent(50),
+        },
+        AssetDistribution {
+            asset: AssetInfo::Native("bWHALE".to_string()),
+            distribution: Decimal::percent(50),
+        },
+    ]
+}
+
+#[inline]
+pub fn asset_distribution_2() -> Vec<AssetDistribution> {
+    vec![
+        AssetDistribution {
+            asset: AssetInfo::Native("aWHALE".to_string()),
+            distribution: Decimal::percent(40),
+        },
+        AssetDistribution {
+            asset: AssetInfo::Native("bWHALE".to_string()),
+            distribution: Decimal::percent(40),
+        },
+        AssetDistribution {
+            asset: AssetInfo::Native("willy".to_string()),
+            distribution: Decimal::percent(20),
+        },
+    ]
+}
+
+#[inline]
+pub fn asset_distribution_broken_1() -> Vec<AssetDistribution> {
+    vec![
+        AssetDistribution {
+            asset: AssetInfo::Native("aWHALE".to_string()),
+            distribution: Decimal::percent(40),
+        },
+        AssetDistribution {
+            asset: AssetInfo::Native("bWHALE".to_string()),
+            distribution: Decimal::percent(70),
+        },
+    ]
+}
+
+#[inline]
+pub fn asset_distribution_broken_2() -> Vec<AssetDistribution> {
+    vec![
+        AssetDistribution {
+            asset: AssetInfo::Native("aWHALE".to_string()),
+            distribution: Decimal::percent(40),
+        },
+        AssetDistribution {
+            asset: AssetInfo::Native("bWHALE".to_string()),
+            distribution: Decimal::percent(20),
+        },
+    ]
 }

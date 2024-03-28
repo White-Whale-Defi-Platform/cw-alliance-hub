@@ -140,7 +140,7 @@ pub struct AllPendingRewardsQuery {
 
 #[cw_serde]
 pub struct MigrateMsg {
-    pub params: Binary,
+    pub operator: String,
 }
 
 #[cw_serde]
