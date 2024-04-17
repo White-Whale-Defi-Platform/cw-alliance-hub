@@ -145,9 +145,7 @@ pub struct AllPendingRewardsQuery {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {
-    pub operator: String,
-}
+pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct StakedBalanceRes {

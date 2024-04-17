@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -11,7 +10,6 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoBase, AssetInfoKey};
-use cw_storage_plus::Item;
 use cw_utils::parse_instantiate_response_data;
 use semver::Version;
 use terra_proto_rs::alliance::alliance::{
@@ -42,7 +40,7 @@ const CREATE_REPLY_ID: u64 = 1;
 const CLAIM_REWARD_ERROR_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version: Version = CONTRACT_VERSION.parse()?;
     let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
 
@@ -50,36 +48,6 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
         storage_version < version,
         StdError::generic_err("Invalid contract version")
     );
-
-    if storage_version <= Version::parse("0.1.1")? {
-        // parse operator address
-        let operator = deps.api.addr_validate(msg.operator.as_str())?;
-
-        #[cw_serde]
-        pub struct ConfigV010 {
-            pub governance: Addr,
-            pub controller: Addr,
-            pub oracle: Addr,
-            pub last_reward_update_timestamp: Timestamp,
-            pub alliance_token_denom: String,
-            pub alliance_token_supply: Uint128,
-            pub reward_denom: String,
-        }
-        const CONFIG_V010: Item<ConfigV010> = Item::new("config");
-        let config_v010 = CONFIG_V010.load(deps.storage)?;
-
-        let config = Config {
-            governance: config_v010.governance,
-            controller: config_v010.controller,
-            oracle: config_v010.oracle,
-            operator,
-            last_reward_update_timestamp: config_v010.last_reward_update_timestamp,
-            alliance_token_denom: config_v010.alliance_token_denom,
-            alliance_token_supply: config_v010.alliance_token_supply,
-            reward_denom: config_v010.reward_denom,
-        };
-        CONFIG.save(deps.storage, &config)?;
-    }
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
