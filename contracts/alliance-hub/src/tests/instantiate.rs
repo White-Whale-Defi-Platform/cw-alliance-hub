@@ -6,11 +6,11 @@ use cosmwasm_std::{
 use terra_proto_rs::traits::MessageExt;
 
 use alliance_protocol::alliance_protocol::ExecuteMsg::UpdateConfig;
-use alliance_protocol::alliance_protocol::{Config, ExecuteMsg, QueryMsg};
+use alliance_protocol::alliance_protocol::{Config, QueryMsg};
 
 use crate::contract::{execute, reply};
 use crate::query::query;
-use crate::tests::helpers::{asset_distribution_1, setup_contract};
+use crate::tests::helpers::setup_contract;
 use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
 
 #[test]
@@ -153,9 +153,8 @@ fn test_update_config() {
         msg.clone(),
     );
 
-    match result {
-        Ok(_) => panic!("should be unauthorized"),
-        Err(_) => {}
+    if result.is_ok() {
+        panic!("should be unauthorized")
     }
 
     let result = execute(
@@ -165,9 +164,8 @@ fn test_update_config() {
         msg.clone(),
     );
 
-    match result {
-        Ok(_) => panic!("should be unauthorized"),
-        Err(_) => {}
+    if result.is_ok() {
+        panic!("should be unauthorized")
     }
 
     let result = execute(
@@ -177,16 +175,14 @@ fn test_update_config() {
         msg.clone(),
     );
 
-    match result {
-        Ok(_) => panic!("should be unauthorized"),
-        Err(_) => {}
+    if result.is_ok() {
+        panic!("should be unauthorized")
     }
 
     let result = execute(deps.as_mut(), mock_env(), mock_info("gov", &[]), msg);
 
-    match result {
-        Ok(_) => {}
-        Err(_) => panic!("should be fine"),
+    if result.is_err() {
+        panic!("should be fine")
     }
 
     let query_config = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
