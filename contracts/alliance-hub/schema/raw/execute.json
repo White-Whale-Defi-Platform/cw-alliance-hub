@@ -186,6 +186,45 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_config"
+      ],
+      "properties": {
+        "update_config": {
+          "type": "object",
+          "properties": {
+            "controller": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "governance": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "operator": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "oracle": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

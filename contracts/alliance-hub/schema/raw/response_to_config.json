@@ -8,6 +8,7 @@
     "controller",
     "governance",
     "last_reward_update_timestamp",
+    "operator",
     "oracle",
     "reward_denom"
   ],
@@ -26,6 +27,9 @@
     },
     "last_reward_update_timestamp": {
       "$ref": "#/definitions/Timestamp"
+    },
+    "operator": {
+      "$ref": "#/definitions/Addr"
     },
     "oracle": {
       "$ref": "#/definitions/Addr"

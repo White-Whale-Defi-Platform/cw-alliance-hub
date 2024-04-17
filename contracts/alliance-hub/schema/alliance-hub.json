@@ -1,6 +1,6 @@
 {
   "contract_name": "alliance-hub",
-  "contract_version": "0.1.0",
+  "contract_version": "0.1.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -10,6 +10,7 @@
       "alliance_token_denom",
       "controller",
       "governance",
+      "operator",
       "oracle",
       "reward_denom"
     ],
@@ -21,6 +22,9 @@
         "type": "string"
       },
       "governance": {
+        "type": "string"
+      },
+      "operator": {
         "type": "string"
       },
       "oracle": {
@@ -217,6 +221,45 @@
             "items": {
               "$ref": "#/definitions/AssetDistribution"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "type": "object",
+            "properties": {
+              "controller": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "governance": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "operator": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "oracle": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -840,6 +883,7 @@
         "controller",
         "governance",
         "last_reward_update_timestamp",
+        "operator",
         "oracle",
         "reward_denom"
       ],
@@ -858,6 +902,9 @@
         },
         "last_reward_update_timestamp": {
           "$ref": "#/definitions/Timestamp"
+        },
+        "operator": {
+          "$ref": "#/definitions/Addr"
         },
         "oracle": {
           "$ref": "#/definitions/Addr"

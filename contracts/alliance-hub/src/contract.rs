@@ -181,6 +181,12 @@ pub fn execute(
         // ExecuteMsg::RebalanceEmissionsCallback {} => rebalance_emissions_callback(deps, env, info),
         // Allow Governance to overwrite the AssetDistributions for the reward emissions
         // Generic unsupported handler returns a StdError
+        ExecuteMsg::UpdateConfig {
+            governance,
+            controller,
+            oracle,
+            operator,
+        } => update_config(deps, info, governance, controller, oracle, operator),
         _ => Err(ContractError::Std(StdError::generic_err(
             "unsupported action",
         ))),
@@ -653,6 +659,41 @@ fn update_reward_callback(
     TEMP_BALANCE.remove(deps.storage);
 
     Ok(Response::new().add_attributes(vec![("action", "update_rewards_callback")]))
+}
+
+fn update_config(
+    deps: DepsMut,
+    info: MessageInfo,
+    governance: Option<String>,
+    controller: Option<String>,
+    oracle: Option<String>,
+    operator: Option<String>,
+) -> Result<Response, ContractError> {
+    let mut config = CONFIG.load(deps.storage)?;
+    ensure!(
+        info.sender == config.governance,
+        ContractError::Unauthorized {}
+    );
+
+    if let Some(governance) = governance {
+        config.governance = deps.api.addr_validate(&governance)?;
+    }
+
+    if let Some(controller) = controller {
+        config.controller = deps.api.addr_validate(&controller)?;
+    }
+
+    if let Some(oracle) = oracle {
+        config.oracle = deps.api.addr_validate(&oracle)?;
+    }
+
+    if let Some(operator) = operator {
+        config.operator = deps.api.addr_validate(&operator)?;
+    }
+
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attributes(vec![("action", "update_config")]))
 }
 
 // fn rebalance_emissions(
