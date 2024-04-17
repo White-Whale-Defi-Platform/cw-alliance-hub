@@ -6,6 +6,7 @@
     "alliance_token_denom",
     "controller",
     "governance",
+    "operator",
     "oracle",
     "reward_denom"
   ],
@@ -17,6 +18,9 @@
       "type": "string"
     },
     "governance": {
+      "type": "string"
+    },
+    "operator": {
       "type": "string"
     },
     "oracle": {

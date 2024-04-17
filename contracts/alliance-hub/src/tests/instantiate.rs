@@ -1,14 +1,17 @@
-use crate::contract::reply;
-use crate::query::query;
-use crate::tests::helpers::setup_contract;
-use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
-use alliance_protocol::alliance_protocol::{Config, QueryMsg};
-use cosmwasm_std::testing::{mock_dependencies, mock_env};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
     from_binary, Addr, Binary, CosmosMsg, Reply, Response, SubMsg, SubMsgResponse, SubMsgResult,
     Timestamp, Uint128,
 };
 use terra_proto_rs::traits::MessageExt;
+
+use alliance_protocol::alliance_protocol::ExecuteMsg::UpdateConfig;
+use alliance_protocol::alliance_protocol::{Config, ExecuteMsg, QueryMsg};
+
+use crate::contract::{execute, reply};
+use crate::query::query;
+use crate::tests::helpers::{asset_distribution_1, setup_contract};
+use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
 
 #[test]
 fn test_setup_contract() {
@@ -18,12 +21,12 @@ fn test_setup_contract() {
     assert_eq!(
         res,
         Response::default()
-            .add_attributes(vec![("action", "instantiate"),])
+            .add_attributes(vec![("action", "instantiate")])
             .add_submessage(SubMsg::reply_on_success(
                 CosmosMsg::Custom(CustomExecuteMsg::Token(TokenExecuteMsg::CreateDenom {
                     subdenom: denom.to_string(),
                 })),
-                1
+                1,
             ))
     );
 
@@ -115,4 +118,88 @@ fn test_reply_create_token() {
             last_reward_update_timestamp: Timestamp::default(),
         }
     );
+}
+
+#[test]
+fn test_update_config() {
+    let mut deps = mock_dependencies();
+    setup_contract(deps.as_mut());
+
+    let query_config = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
+    let Config {
+        governance,
+        controller,
+        oracle,
+        operator,
+        ..
+    } = from_binary(&query_config).unwrap();
+
+    assert_eq!(governance, Addr::unchecked("gov"));
+    assert_eq!(controller, Addr::unchecked("controller"));
+    assert_eq!(oracle, Addr::unchecked("oracle"));
+    assert_eq!(operator, Addr::unchecked("operator"));
+
+    let msg = UpdateConfig {
+        governance: Some("new_gov".to_string()),
+        controller: Some("new_controller".to_string()),
+        oracle: Some("new_oracle".to_string()),
+        operator: Some("new_operator".to_string()),
+    };
+
+    let result = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("unauthorized", &[]),
+        msg.clone(),
+    );
+
+    match result {
+        Ok(_) => panic!("should be unauthorized"),
+        Err(_) => {}
+    }
+
+    let result = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("operator", &[]),
+        msg.clone(),
+    );
+
+    match result {
+        Ok(_) => panic!("should be unauthorized"),
+        Err(_) => {}
+    }
+
+    let result = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("controller", &[]),
+        msg.clone(),
+    );
+
+    match result {
+        Ok(_) => panic!("should be unauthorized"),
+        Err(_) => {}
+    }
+
+    let result = execute(deps.as_mut(), mock_env(), mock_info("gov", &[]), msg);
+
+    match result {
+        Ok(_) => {}
+        Err(_) => panic!("should be fine"),
+    }
+
+    let query_config = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
+    let Config {
+        governance,
+        controller,
+        oracle,
+        operator,
+        ..
+    } = from_binary(&query_config).unwrap();
+
+    assert_eq!(governance, Addr::unchecked("new_gov"));
+    assert_eq!(controller, Addr::unchecked("new_controller"));
+    assert_eq!(oracle, Addr::unchecked("new_oracle"));
+    assert_eq!(operator, Addr::unchecked("new_operator"));
 }

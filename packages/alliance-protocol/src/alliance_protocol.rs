@@ -53,6 +53,12 @@ pub enum ExecuteMsg {
     RebalanceEmissions {},
     RebalanceEmissionsCallback {},
     SetAssetRewardDistribution(Vec<AssetDistribution>),
+    UpdateConfig {
+        governance: Option<String>,
+        controller: Option<String>,
+        oracle: Option<String>,
+        operator: Option<String>,
+    },
 }
 
 #[cw_serde]
