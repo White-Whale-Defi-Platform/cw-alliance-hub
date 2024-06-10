@@ -3,14 +3,13 @@ use std::collections::{HashMap, HashSet};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, to_json_binary, Addr, Binary, Coin as CwCoin, CosmosMsg,
-    Decimal, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult,
-    Storage, SubMsg, Timestamp, Uint128, WasmMsg,
+    ensure, from_json, to_json_binary, Addr, Binary, Coin as CwCoin, CosmosMsg, Decimal, DepsMut,
+    Empty, Env, MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Timestamp,
+    Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
-use cw_asset_v2::{Asset, AssetInfo, AssetInfoBase, AssetInfoKey};
-use cw_storage_plus::Map;
+use cw_asset_v3::{Asset, AssetInfo, AssetInfoBase};
 use cw_utils::parse_instantiate_response_data;
 use semver::Version;
 use terra_proto_rs::alliance::alliance::{
@@ -23,7 +22,7 @@ use terra_proto_rs::traits::Message;
 use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::{
     AllianceDelegateMsg, AllianceRedelegateMsg, AllianceUndelegateMsg, AssetDistribution, Config,
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, WhitelistedAssetsResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
 };
 
 // use alliance_protocol::alliance_oracle_types::{AssetStaked, ChainId, EmissionsDistribution};
@@ -42,7 +41,7 @@ const CREATE_REPLY_ID: u64 = 1;
 const CLAIM_REWARD_ERROR_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version: Version = CONTRACT_VERSION.parse()?;
     let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
 
@@ -51,7 +50,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response
         StdError::generic_err("Invalid contract version")
     );
 
-    migrate_maps(deps.branch(), env)?;
+    migrate_maps(deps.branch())?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
@@ -174,7 +173,7 @@ fn receive_cw20(
 ) -> Result<Response, ContractError> {
     let sender = deps.api.addr_validate(&cw20_msg.sender)?;
 
-    match from_binary(&cw20_msg.msg)? {
+    match from_json(&cw20_msg.msg)? {
         Cw20HookMsg::Stake {} => {
             if cw20_msg.amount.is_zero() {
                 return Err(ContractError::AmountCannotBeZero {});
@@ -220,9 +219,8 @@ fn whitelist_assets(
     let mut attrs = vec![("action".to_string(), "whitelist_assets".to_string())];
     for (chain_id, assets) in &assets_request {
         for asset in assets {
-            let asset_key = AssetInfoKey::from(asset.clone());
-            WHITELIST.save(deps.storage, asset_key.clone(), chain_id)?;
-            ASSET_REWARD_RATE.update(deps.storage, asset_key, |rate| -> StdResult<_> {
+            WHITELIST.save(deps.storage, &asset, chain_id)?;
+            ASSET_REWARD_RATE.update(deps.storage, &asset, |rate| -> StdResult<_> {
                 Ok(rate.unwrap_or(Decimal::zero()))
             })?;
         }
@@ -247,8 +245,7 @@ fn remove_assets(
     // Only allow the governance address to update whitelisted assets
     is_governance(&info, &config)?;
     for asset in &assets {
-        let asset_key = AssetInfoKey::from(asset.clone());
-        WHITELIST.remove(deps.storage, asset_key);
+        WHITELIST.remove(deps.storage, &asset);
     }
     let assets_str = assets
         .iter()
@@ -266,16 +263,15 @@ fn stake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    let asset_key = AssetInfoKey::from(&asset);
     WHITELIST
-        .load(deps.storage, asset_key.clone())
+        .load(deps.storage, &asset)
         .map_err(|_| ContractError::AssetNotWhitelisted {})?;
 
     let rewards = _claim_reward(deps.storage, sender.clone(), asset.clone())?;
     if !rewards.is_zero() {
         UNCLAIMED_REWARDS.update(
             deps.storage,
-            (sender.clone(), asset_key.clone()),
+            (sender.clone(), &asset),
             |balance| -> Result<_, ContractError> {
                 Ok(balance.unwrap_or(Uint128::zero()) + rewards)
             },
@@ -284,7 +280,7 @@ fn stake(
 
     BALANCES.update(
         deps.storage,
-        (sender.clone(), asset_key.clone()),
+        (sender.clone(), &asset),
         |balance| -> Result<_, ContractError> {
             match balance {
                 Some(balance) => Ok(balance + amount),
@@ -294,18 +290,14 @@ fn stake(
     )?;
     TOTAL_BALANCES.update(
         deps.storage,
-        asset_key.clone(),
+        &asset,
         |balance| -> Result<_, ContractError> { Ok(balance.unwrap_or(Uint128::zero()) + amount) },
     )?;
 
     let asset_reward_rate = ASSET_REWARD_RATE
-        .load(deps.storage, asset_key.clone())
+        .load(deps.storage, &asset)
         .unwrap_or(Decimal::zero());
-    USER_ASSET_REWARD_RATE.save(
-        deps.storage,
-        (sender.clone(), asset_key),
-        &asset_reward_rate,
-    )?;
+    USER_ASSET_REWARD_RATE.save(deps.storage, (sender.clone(), &asset), &asset_reward_rate)?;
 
     Ok(Response::new().add_attributes(vec![
         ("action", "stake"),
@@ -316,7 +308,6 @@ fn stake(
 }
 
 fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, ContractError> {
-    let asset_key = AssetInfoKey::from(asset.info.clone());
     let sender = info.sender.clone();
     if asset.amount.is_zero() {
         return Err(ContractError::AmountCannotBeZero {});
@@ -326,7 +317,7 @@ fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, C
     if !rewards.is_zero() {
         UNCLAIMED_REWARDS.update(
             deps.storage,
-            (sender.clone(), asset_key.clone()),
+            (sender.clone(), &asset.info),
             |balance| -> Result<_, ContractError> {
                 Ok(balance.unwrap_or(Uint128::zero()) + rewards)
             },
@@ -335,7 +326,7 @@ fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, C
 
     BALANCES.update(
         deps.storage,
-        (sender, asset_key.clone()),
+        (sender, &asset.info),
         |balance| -> Result<_, ContractError> {
             match balance {
                 Some(balance) => {
@@ -350,7 +341,7 @@ fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, C
     )?;
     TOTAL_BALANCES.update(
         deps.storage,
-        asset_key,
+        &asset.info,
         |balance| -> Result<_, ContractError> {
             let balance = balance.unwrap_or(Uint128::zero());
             if balance < asset.amount {
@@ -375,26 +366,20 @@ fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, C
 fn claim_rewards(
     deps: DepsMut,
     info: MessageInfo,
-    asset: AssetInfo,
+    asset_info: AssetInfo,
 ) -> Result<Response, ContractError> {
     let user = info.sender;
     let config = CONFIG.load(deps.storage)?;
-    let rewards = _claim_reward(deps.storage, user.clone(), asset.clone())?;
+    let rewards = _claim_reward(deps.storage, user.clone(), asset_info.clone())?;
     let unclaimed_rewards = UNCLAIMED_REWARDS
-        .load(
-            deps.storage,
-            (user.clone(), AssetInfoKey::from(asset.clone())),
-        )
+        .load(deps.storage, (user.clone(), &asset_info))
         .unwrap_or(Uint128::zero());
     let final_rewards = rewards + unclaimed_rewards;
-    UNCLAIMED_REWARDS.remove(
-        deps.storage,
-        (user.clone(), AssetInfoKey::from(asset.clone())),
-    );
+    UNCLAIMED_REWARDS.remove(deps.storage, (user.clone(), &asset_info));
     let response = Response::new().add_attributes(vec![
         ("action", "claim_rewards"),
         ("user", user.as_ref()),
-        ("asset", &asset.to_string()),
+        ("asset", &asset_info.to_string()),
         ("reward_amount", &final_rewards.to_string()),
     ]);
     if !final_rewards.is_zero() {
@@ -411,26 +396,25 @@ fn claim_rewards(
 fn _claim_reward(
     storage: &mut dyn Storage,
     user: Addr,
-    asset: AssetInfo,
+    asset_info: AssetInfo,
 ) -> Result<Uint128, ContractError> {
-    let asset_key = AssetInfoKey::from(&asset);
-    let user_reward_rate = USER_ASSET_REWARD_RATE.load(storage, (user.clone(), asset_key.clone()));
-    let asset_reward_rate = ASSET_REWARD_RATE.load(storage, asset_key.clone())?;
+    let user_reward_rate = USER_ASSET_REWARD_RATE.load(storage, (user.clone(), &asset_info));
+    let asset_reward_rate = ASSET_REWARD_RATE.load(storage, &asset_info)?;
 
     if let Ok(user_reward_rate) = user_reward_rate {
-        let user_staked = BALANCES.load(storage, (user.clone(), asset_key.clone()))?;
+        let user_staked = BALANCES.load(storage, (user.clone(), &asset_info))?;
         let rewards = ((asset_reward_rate - user_reward_rate)
             * Decimal::from_atomics(user_staked, 0)?)
         .to_uint_floor();
         if rewards.is_zero() {
             Ok(Uint128::zero())
         } else {
-            USER_ASSET_REWARD_RATE.save(storage, (user, asset_key), &asset_reward_rate)?;
+            USER_ASSET_REWARD_RATE.save(storage, (user, &asset_info), &asset_reward_rate)?;
             Ok(rewards)
         }
     } else {
         // If cannot find user_reward_rate, assume this is the first time they are staking and set it to the current asset_reward_rate
-        USER_ASSET_REWARD_RATE.save(storage, (user, asset_key), &asset_reward_rate)?;
+        USER_ASSET_REWARD_RATE.save(storage, (user, &asset_info), &asset_reward_rate)?;
 
         Ok(Uint128::zero())
     }
@@ -576,7 +560,7 @@ fn update_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response
         .collect();
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
-        msg: to_binary(&ExecuteMsg::UpdateRewardsCallback {}).unwrap(),
+        msg: to_json_binary(&ExecuteMsg::UpdateRewardsCallback {}).unwrap(),
         funds: vec![],
     });
 
@@ -607,14 +591,13 @@ fn update_reward_callback(
         .fold(Decimal::zero(), |acc, v| acc + v);
 
     for asset_distribution in asset_reward_distribution {
-        let asset_key = AssetInfoKey::from(asset_distribution.asset);
         let total_reward_distributed = Decimal::from_atomics(rewards_collected, 0)?
             * asset_distribution.distribution
             / total_distribution;
 
         // If there are no balances, we stop updating the rate. This means that the emissions are not directed to any stakers.
         let total_balance = TOTAL_BALANCES
-            .load(deps.storage, asset_key.clone())
+            .load(deps.storage, &asset_distribution.asset)
             .unwrap_or(Uint128::zero());
         if !total_balance.is_zero() {
             let rate_to_update =
@@ -622,7 +605,7 @@ fn update_reward_callback(
             if rate_to_update > Decimal::zero() {
                 ASSET_REWARD_RATE.update(
                     deps.storage,
-                    asset_key.clone(),
+                    &asset_distribution.asset,
                     |rate| -> StdResult<_> { Ok(rate.unwrap_or(Decimal::zero()) + rate_to_update) },
                 )?;
             }
@@ -687,7 +670,7 @@ fn update_config(
 
 //     Ok(res.add_message(CosmosMsg::Wasm(WasmMsg::Execute {
 //         contract_addr: env.contract.address.to_string(),
-//         msg: to_binary(&ExecuteMsg::RebalanceEmissionsCallback {}).unwrap(),
+//         msg: to_json_binary(&ExecuteMsg::RebalanceEmissionsCallback {}).unwrap(),
 //         funds: vec![],
 //     })))
 // }

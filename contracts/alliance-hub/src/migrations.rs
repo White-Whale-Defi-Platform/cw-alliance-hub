@@ -6,27 +6,22 @@ use crate::state::{
 use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::AssetDistribution;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    to_json_binary, Addr, Decimal, DepsMut, Env, Order, StdError, StdResult, Uint128,
-};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Order, Uint128};
 use cw_storage_plus_016::{Item as Item016, Map as Map016};
-use cw_storage_plus_120::{Item, Map, PrimaryKey};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 
-pub(crate) fn migrate_maps(deps: DepsMut, env: Env) -> Result<(), ContractError> {
-    migrate_whitelist_map(&deps)?;
-    migrate_balances_map(&deps)?;
-    migrate_total_balances_map(&deps)?;
-    migrate_asset_reward_distribution(&deps)?;
-    migrate_asset_reward_rate(&deps)?;
-    migrate_user_asset_reward_rate(&deps)?;
-    migrate_unclaimed_rewards(&deps)?;
+pub(crate) fn migrate_maps(mut deps: DepsMut) -> Result<(), ContractError> {
+    migrate_whitelist_map(deps.branch())?;
+    migrate_balances_map(deps.branch())?;
+    migrate_total_balances_map(deps.branch())?;
+    migrate_asset_reward_distribution(deps.branch())?;
+    migrate_asset_reward_rate(deps.branch())?;
+    migrate_user_asset_reward_rate(deps.branch())?;
+    migrate_unclaimed_rewards(deps.branch())?;
 
     Ok(())
 }
 
-fn migrate_whitelist_map(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_whitelist_map(deps: DepsMut) -> Result<(), ContractError> {
     const OLD_WHITELIST: Map016<cw_asset_v2::AssetInfoKey, ChainId> = Map016::new("whitelist");
 
     let old_map = OLD_WHITELIST
@@ -55,7 +50,7 @@ fn migrate_whitelist_map(deps: &DepsMut) -> Result<(), ContractError> {
 
     Ok(())
 }
-fn migrate_balances_map(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_balances_map(deps: DepsMut) -> Result<(), ContractError> {
     const OLD_BALANCES: Map016<(Addr, cw_asset_v2::AssetInfoKey), Uint128> =
         Map016::new("balances");
 
@@ -86,7 +81,7 @@ fn migrate_balances_map(deps: &DepsMut) -> Result<(), ContractError> {
 
     Ok(())
 }
-fn migrate_total_balances_map(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_total_balances_map(deps: DepsMut) -> Result<(), ContractError> {
     const OLD_TOTAL_BALANCES: Map016<cw_asset_v2::AssetInfoKey, Uint128> =
         Map016::new("total_balances");
 
@@ -118,7 +113,7 @@ fn migrate_total_balances_map(deps: &DepsMut) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn migrate_asset_reward_distribution(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_asset_reward_distribution(deps: DepsMut) -> Result<(), ContractError> {
     #[cw_serde]
     pub struct OldAssetDistribution {
         pub asset: cw_asset_v2::AssetInfo,
@@ -150,7 +145,7 @@ fn migrate_asset_reward_distribution(deps: &DepsMut) -> Result<(), ContractError
     Ok(())
 }
 
-fn migrate_asset_reward_rate(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_asset_reward_rate(deps: DepsMut) -> Result<(), ContractError> {
     const OLD_ASSET_REWARD_RATE: Map016<cw_asset_v2::AssetInfoKey, Decimal> =
         Map016::new("asset_reward_rate");
 
@@ -182,7 +177,7 @@ fn migrate_asset_reward_rate(deps: &DepsMut) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn migrate_user_asset_reward_rate(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_user_asset_reward_rate(deps: DepsMut) -> Result<(), ContractError> {
     const OLD_USER_ASSET_REWARD_RATE: Map016<(Addr, cw_asset_v2::AssetInfoKey), Decimal> =
         Map016::new("user_asset_reward_rate");
 
@@ -214,7 +209,7 @@ fn migrate_user_asset_reward_rate(deps: &DepsMut) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn migrate_unclaimed_rewards(deps: &DepsMut) -> Result<(), ContractError> {
+fn migrate_unclaimed_rewards(deps: DepsMut) -> Result<(), ContractError> {
     pub const OLD_UNCLAIMED_REWARDS: Map016<(Addr, cw_asset_v2::AssetInfoKey), Uint128> =
         Map016::new("unclaimed_rewards");
 

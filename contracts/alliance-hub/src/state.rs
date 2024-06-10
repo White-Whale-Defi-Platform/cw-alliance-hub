@@ -1,7 +1,6 @@
 use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::{AssetDistribution, Config};
 use cosmwasm_std::{Addr, Decimal, Uint128};
-use cw_asset_v2::AssetInfoKey;
 use cw_asset_v3::AssetInfo;
 use cw_storage_plus_120::{Item, Map};
 use std::collections::HashSet;
