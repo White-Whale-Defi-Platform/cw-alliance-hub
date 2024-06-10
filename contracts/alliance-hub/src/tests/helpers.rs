@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    coin, from_binary, to_binary, Decimal, Deps, DepsMut, Response, StdResult, Uint128,
+    coin, from_json, to_json_binary, Decimal, Deps, DepsMut, Response, StdResult, Uint128,
 };
 use cw20::Cw20ReceiveMsg;
-use cw_asset_v2::{Asset, AssetInfo};
+use cw_asset_v3::{Asset, AssetInfo};
 
 use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::{
@@ -77,7 +77,7 @@ pub fn stake_cw20(deps: DepsMut, user: &str, amount: u128, denom: &str) -> Respo
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: user.to_string(),
         amount: amount.into(),
-        msg: to_binary(&Cw20HookMsg::Stake {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::Stake {}).unwrap(),
     });
     execute(deps, env, info, msg).unwrap()
 }
@@ -149,7 +149,7 @@ pub fn claim_rewards(deps: DepsMut, user: &str, denom: &str) -> Response {
 }
 
 pub fn query_rewards(deps: Deps, user: &str, denom: &str) -> PendingRewardsRes {
-    from_binary(
+    from_json(
         &query(
             deps,
             mock_env(),
@@ -164,7 +164,7 @@ pub fn query_rewards(deps: Deps, user: &str, denom: &str) -> PendingRewardsRes {
 }
 
 pub fn query_all_rewards(deps: Deps, user: &str) -> Vec<PendingRewardsRes> {
-    from_binary(
+    from_json(
         &query(
             deps,
             mock_env(),
@@ -178,11 +178,11 @@ pub fn query_all_rewards(deps: Deps, user: &str) -> Vec<PendingRewardsRes> {
 }
 
 pub fn query_all_staked_balances(deps: Deps) -> Vec<StakedBalanceRes> {
-    from_binary(&query(deps, mock_env(), QueryMsg::TotalStakedBalances {}).unwrap()).unwrap()
+    from_json(&query(deps, mock_env(), QueryMsg::TotalStakedBalances {}).unwrap()).unwrap()
 }
 
 pub fn query_asset_reward_distribution(deps: Deps) -> Vec<AssetDistribution> {
-    from_binary(&query(deps, mock_env(), QueryMsg::RewardDistribution {}).unwrap()).unwrap()
+    from_json(&query(deps, mock_env(), QueryMsg::RewardDistribution {}).unwrap()).unwrap()
 }
 
 #[inline]

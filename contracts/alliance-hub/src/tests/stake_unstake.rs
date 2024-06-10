@@ -7,8 +7,8 @@ use crate::tests::helpers::{
 };
 use alliance_protocol::alliance_protocol::{ExecuteMsg, StakedBalanceRes};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coin, to_binary, Addr, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
-use cw_asset_v2::{Asset, AssetInfo, AssetInfoKey};
+use cosmwasm_std::{coin, to_json_binary, Addr, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
+use cw_asset_v3::{Asset, AssetInfo};
 use std::collections::HashMap;
 
 mod cw20_support {
@@ -42,7 +42,7 @@ mod cw20_support {
                 deps.as_ref().storage,
                 (
                     Addr::unchecked("user1"),
-                    AssetInfoKey::from(AssetInfo::Cw20(Addr::unchecked("asset1"))),
+                    &AssetInfo::Cw20(Addr::unchecked("asset1")),
                 ),
             )
             .unwrap();
@@ -64,7 +64,7 @@ mod cw20_support {
                 deps.as_ref().storage,
                 (
                     Addr::unchecked("user1"),
-                    AssetInfoKey::from(AssetInfo::Cw20(Addr::unchecked("asset1"))),
+                    &AssetInfo::Cw20(Addr::unchecked("asset1")),
                 ),
             )
             .unwrap();
@@ -73,7 +73,7 @@ mod cw20_support {
         let total_balance = TOTAL_BALANCES
             .load(
                 deps.as_ref().storage,
-                AssetInfoKey::from(AssetInfo::Cw20(Addr::unchecked("asset1"))),
+                &AssetInfo::Cw20(Addr::unchecked("asset1")),
             )
             .unwrap();
         assert_eq!(total_balance, Uint128::new(200));
@@ -123,7 +123,7 @@ mod cw20_support {
                 ])
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "asset1".into(),
-                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                         recipient: "user1".into(),
                         amount: Uint128::new(50),
                     })
@@ -137,7 +137,7 @@ mod cw20_support {
                 deps.as_ref().storage,
                 (
                     Addr::unchecked("user1"),
-                    AssetInfoKey::from(AssetInfo::Cw20(Addr::unchecked("asset1".to_string()))),
+                    &AssetInfo::Cw20(Addr::unchecked("asset1")),
                 ),
             )
             .unwrap();
@@ -155,7 +155,7 @@ mod cw20_support {
                 ])
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "asset1".into(),
-                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                         recipient: "user1".into(),
                         amount: Uint128::new(50),
                     })
@@ -169,7 +169,7 @@ mod cw20_support {
                 deps.as_ref().storage,
                 (
                     Addr::unchecked("user1"),
-                    AssetInfoKey::from(AssetInfo::Cw20(Addr::unchecked("asset1".to_string()))),
+                    &AssetInfo::Cw20(Addr::unchecked("asset1")),
                 ),
             )
             .unwrap();
@@ -178,7 +178,7 @@ mod cw20_support {
         let total_balance = TOTAL_BALANCES
             .load(
                 deps.as_ref().storage,
-                AssetInfoKey::from(AssetInfo::Cw20(Addr::unchecked("asset1".to_string()))),
+                &AssetInfo::Cw20(Addr::unchecked("asset1")),
             )
             .unwrap();
         assert_eq!(total_balance, Uint128::new(0));
@@ -212,7 +212,7 @@ fn test_stake() {
             deps.as_ref().storage,
             (
                 Addr::unchecked("user1"),
-                AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+                &AssetInfo::Native("asset1".to_string()),
             ),
         )
         .unwrap();
@@ -234,7 +234,7 @@ fn test_stake() {
             deps.as_ref().storage,
             (
                 Addr::unchecked("user1"),
-                AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+                &AssetInfo::Native("asset1".to_string()),
             ),
         )
         .unwrap();
@@ -243,7 +243,7 @@ fn test_stake() {
     let total_balance = TOTAL_BALANCES
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+            &AssetInfo::Native("asset1".to_string()),
         )
         .unwrap();
     assert_eq!(total_balance, Uint128::new(200));
@@ -329,7 +329,7 @@ fn test_unstake() {
             deps.as_ref().storage,
             (
                 Addr::unchecked("user1"),
-                AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+                &AssetInfo::Native("asset1".to_string()),
             ),
         )
         .unwrap();
@@ -356,7 +356,7 @@ fn test_unstake() {
             deps.as_ref().storage,
             (
                 Addr::unchecked("user1"),
-                AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+                &AssetInfo::Native("asset1".to_string()),
             ),
         )
         .unwrap();
@@ -365,7 +365,7 @@ fn test_unstake() {
     let total_balance = TOTAL_BALANCES
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+            &AssetInfo::Native("asset1".to_string()),
         )
         .unwrap();
     assert_eq!(total_balance, Uint128::new(0));

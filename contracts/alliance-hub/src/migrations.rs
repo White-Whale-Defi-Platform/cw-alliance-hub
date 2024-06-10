@@ -26,7 +26,6 @@ fn migrate_whitelist_map(deps: DepsMut) -> Result<(), ContractError> {
 
     let old_map = OLD_WHITELIST
         .range(deps.storage, None, None, Order::Ascending)
-        .into_iter()
         .map(|item| {
             let (key, value) = item.unwrap();
             (key, value)
@@ -56,7 +55,6 @@ fn migrate_balances_map(deps: DepsMut) -> Result<(), ContractError> {
 
     let old_map = OLD_BALANCES
         .range(deps.storage, None, None, Order::Ascending)
-        .into_iter()
         .map(|item| {
             let (key, value) = item.unwrap();
             (key, value)
@@ -87,7 +85,6 @@ fn migrate_total_balances_map(deps: DepsMut) -> Result<(), ContractError> {
 
     let old_map = OLD_TOTAL_BALANCES
         .range(deps.storage, None, None, Order::Ascending)
-        .into_iter()
         .map(|item| {
             let (key, value) = item.unwrap();
             (key, value)
@@ -151,7 +148,6 @@ fn migrate_asset_reward_rate(deps: DepsMut) -> Result<(), ContractError> {
 
     let old_map = OLD_ASSET_REWARD_RATE
         .range(deps.storage, None, None, Order::Ascending)
-        .into_iter()
         .map(|item| {
             let (key, value) = item.unwrap();
             (key, value)
@@ -183,7 +179,6 @@ fn migrate_user_asset_reward_rate(deps: DepsMut) -> Result<(), ContractError> {
 
     let old_map = OLD_USER_ASSET_REWARD_RATE
         .range(deps.storage, None, None, Order::Ascending)
-        .into_iter()
         .map(|item| {
             let (key, value) = item.unwrap();
             (key, value)
@@ -215,7 +210,6 @@ fn migrate_unclaimed_rewards(deps: DepsMut) -> Result<(), ContractError> {
 
     let old_map = OLD_UNCLAIMED_REWARDS
         .range(deps.storage, None, None, Order::Ascending)
-        .into_iter()
         .map(|item| {
             let (key, value) = item.unwrap();
             (key, value)

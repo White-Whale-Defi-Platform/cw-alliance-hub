@@ -219,8 +219,8 @@ fn whitelist_assets(
     let mut attrs = vec![("action".to_string(), "whitelist_assets".to_string())];
     for (chain_id, assets) in &assets_request {
         for asset in assets {
-            WHITELIST.save(deps.storage, &asset, chain_id)?;
-            ASSET_REWARD_RATE.update(deps.storage, &asset, |rate| -> StdResult<_> {
+            WHITELIST.save(deps.storage, asset, chain_id)?;
+            ASSET_REWARD_RATE.update(deps.storage, asset, |rate| -> StdResult<_> {
                 Ok(rate.unwrap_or(Decimal::zero()))
             })?;
         }
@@ -245,7 +245,7 @@ fn remove_assets(
     // Only allow the governance address to update whitelisted assets
     is_governance(&info, &config)?;
     for asset in &assets {
-        WHITELIST.remove(deps.storage, &asset);
+        WHITELIST.remove(deps.storage, asset);
     }
     let assets_str = assets
         .iter()
