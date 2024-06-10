@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
 use cosmwasm_std::{
-    coin, coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg, Uint128,
-    WasmMsg,
+    coin, coins, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg,
+    Uint128, WasmMsg,
 };
-use cw_asset::{AssetInfo, AssetInfoKey};
+use cw_asset_v3::AssetInfo;
 use terra_proto_rs::alliance::alliance::MsgClaimDelegationRewards;
 use terra_proto_rs::traits::Message;
 
@@ -63,7 +63,7 @@ fn test_update_rewards() {
             SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 funds: vec![],
                 contract_addr: "cosmos2contract".to_string(),
-                msg: to_binary(&ExecuteMsg::UpdateRewardsCallback {}).unwrap(),
+                msg: to_json_binary(&ExecuteMsg::UpdateRewardsCallback {}).unwrap(),
             })),
         ]
     );
@@ -107,14 +107,14 @@ fn update_reward_callback() {
     TOTAL_BALANCES
         .save(
             deps.as_mut().storage,
-            AssetInfoKey::from(AssetInfo::Native("aWHALE".to_string())),
+            &AssetInfo::Native("aWHALE".to_string()),
             &Uint128::new(1000000),
         )
         .unwrap();
     TOTAL_BALANCES
         .save(
             deps.as_mut().storage,
-            AssetInfoKey::from(AssetInfo::Native("bWHALE".to_string())),
+            &AssetInfo::Native("bWHALE".to_string()),
             &Uint128::new(100000),
         )
         .unwrap();
@@ -153,7 +153,7 @@ fn update_reward_callback() {
     let a_whale_rate = ASSET_REWARD_RATE
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("aWHALE".to_string())),
+            &AssetInfo::Native("aWHALE".to_string()),
         )
         .unwrap();
     assert_eq!(
@@ -163,7 +163,7 @@ fn update_reward_callback() {
     let b_whale_rate = ASSET_REWARD_RATE
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("bWHALE".to_string())),
+            &AssetInfo::Native("bWHALE".to_string()),
         )
         .unwrap();
     assert_eq!(
@@ -173,7 +173,7 @@ fn update_reward_callback() {
     ASSET_REWARD_RATE
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("cMONKEY".to_string())),
+            &AssetInfo::Native("cMONKEY".to_string()),
         )
         .unwrap_err();
 
@@ -265,14 +265,14 @@ fn claim_user_rewards() {
             deps.as_ref().storage,
             (
                 Addr::unchecked("user1"),
-                AssetInfoKey::from(AssetInfo::Native("aWHALE".to_string())),
+                &AssetInfo::Native("aWHALE".to_string()),
             ),
         )
         .unwrap();
     let asset_reward_rate = ASSET_REWARD_RATE
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("aWHALE".to_string())),
+            &AssetInfo::Native("aWHALE".to_string()),
         )
         .unwrap();
     assert_eq!(user_reward_rate, asset_reward_rate);
@@ -460,7 +460,7 @@ fn claim_rewards_after_staking_and_unstaking() {
     let prev_rate = ASSET_REWARD_RATE
         .load(
             deps.as_mut().storage,
-            AssetInfoKey::from(AssetInfo::Native("aWHALE".to_string())),
+            &AssetInfo::Native("aWHALE".to_string()),
         )
         .unwrap();
 
@@ -482,7 +482,7 @@ fn claim_rewards_after_staking_and_unstaking() {
     let curr_rate = ASSET_REWARD_RATE
         .load(
             deps.as_mut().storage,
-            AssetInfoKey::from(AssetInfo::Native("aWHALE".to_string())),
+            &AssetInfo::Native("aWHALE".to_string()),
         )
         .unwrap();
     assert!(curr_rate > prev_rate);

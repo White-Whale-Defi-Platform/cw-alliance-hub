@@ -5,8 +5,8 @@ use crate::state::WHITELIST;
 use crate::tests::helpers::{remove_assets, setup_contract, whitelist_assets};
 use alliance_protocol::alliance_protocol::{ExecuteMsg, QueryMsg, WhitelistedAssetsResponse};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, Response};
-use cw_asset::{AssetInfo, AssetInfoKey};
+use cosmwasm_std::{from_json, Response};
+use cw_asset_v3::AssetInfo;
 use std::collections::HashMap;
 
 #[test]
@@ -51,13 +51,13 @@ fn test_whitelist_assets() {
     let chain_id = WHITELIST
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("asset2".to_string())),
+            &AssetInfo::Native("asset2".to_string()),
         )
         .unwrap();
     assert_eq!(chain_id, "chain-1".to_string());
 
     let res: WhitelistedAssetsResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::WhitelistedAssets {}).unwrap())
+        from_json(&query(deps.as_ref(), mock_env(), QueryMsg::WhitelistedAssets {}).unwrap())
             .unwrap();
     assert_eq!(
         res,
@@ -116,7 +116,7 @@ fn test_remove_assets() {
     WHITELIST
         .load(
             deps.as_ref().storage,
-            AssetInfoKey::from(AssetInfo::Native("asset1".to_string())),
+            &AssetInfo::Native("asset1".to_string()),
         )
         .unwrap_err();
 }

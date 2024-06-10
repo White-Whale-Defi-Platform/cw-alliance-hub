@@ -1,5 +1,6 @@
 pub mod contract;
 pub mod error;
+mod migrations;
 pub mod query;
 pub mod state;
 #[cfg(test)]
