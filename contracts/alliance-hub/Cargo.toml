@@ -20,8 +20,10 @@ library = []
 cosmwasm-std = { workspace = true, features = ["stargate"] }
 cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw-storage-plus = { workspace = true }
-cw-asset = { workspace = true }
+cw_storage_plus_016 = { workspace = true }
+cw_storage_plus_120 = { workspace = true }
+cw_asset_v2 = { workspace = true }
+cw_asset_v3 = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }

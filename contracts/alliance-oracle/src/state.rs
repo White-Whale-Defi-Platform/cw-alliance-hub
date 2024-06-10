@@ -1,5 +1,5 @@
 use alliance_protocol::alliance_oracle_types::{ChainInfo, Config, LunaInfo};
-use cw_storage_plus::Item;
+use cw_storage_plus_016::Item;
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const CHAINS_INFO: Item<Vec<ChainInfo>> = Item::new("chains_info");

@@ -5,7 +5,7 @@ use cosmwasm_std::{
     coin, from_binary, to_binary, Decimal, Deps, DepsMut, Response, StdResult, Uint128,
 };
 use cw20::Cw20ReceiveMsg;
-use cw_asset::{Asset, AssetInfo};
+use cw_asset_v2::{Asset, AssetInfo};
 
 use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::{

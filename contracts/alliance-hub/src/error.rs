@@ -1,4 +1,5 @@
 use cosmwasm_std::{DecimalRangeExceeded, StdError};
+use cw_asset_v3::AssetError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -39,6 +40,9 @@ pub enum ContractError {
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
+
+    #[error("{0}")]
+    AssetError(#[from] AssetError),
 }
 
 impl From<semver::Error> for ContractError {
