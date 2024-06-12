@@ -6,7 +6,7 @@ use crate::tests::helpers::{remove_assets, setup_contract, whitelist_assets};
 use alliance_protocol::alliance_protocol::{ExecuteMsg, QueryMsg, WhitelistedAssetsResponse};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{from_json, Response};
-use cw_asset_v3::AssetInfo;
+use cw_asset::AssetInfo;
 use std::collections::HashMap;
 
 #[test]

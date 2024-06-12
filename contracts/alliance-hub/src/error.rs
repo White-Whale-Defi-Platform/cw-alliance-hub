@@ -1,5 +1,5 @@
 use cosmwasm_std::{DecimalRangeExceeded, StdError};
-use cw_asset_v3::AssetError;
+use cw_asset::AssetError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]

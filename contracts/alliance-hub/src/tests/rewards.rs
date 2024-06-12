@@ -5,7 +5,7 @@ use cosmwasm_std::{
     coin, coins, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg,
     Uint128, WasmMsg,
 };
-use cw_asset_v3::AssetInfo;
+use cw_asset::AssetInfo;
 use terra_proto_rs::alliance::alliance::MsgClaimDelegationRewards;
 use terra_proto_rs::traits::Message;
 

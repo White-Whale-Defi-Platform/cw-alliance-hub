@@ -5,12 +5,11 @@ use cosmwasm_std::{
     coin, from_json, to_json_binary, Decimal, Deps, DepsMut, Response, StdResult, Uint128,
 };
 use cw20::Cw20ReceiveMsg;
-use cw_asset_v3::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo};
 
-use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::{
     AllPendingRewardsQuery, AllianceDelegateMsg, AllianceDelegation, AllianceRedelegateMsg,
-    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetQuery, Config,
+    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetQuery, ChainId, Config,
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes, QueryMsg, StakedBalanceRes,
 };
 

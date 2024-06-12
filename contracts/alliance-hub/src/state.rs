@@ -1,8 +1,7 @@
-use alliance_protocol::alliance_oracle_types::ChainId;
-use alliance_protocol::alliance_protocol::{AssetDistribution, Config};
+use alliance_protocol::alliance_protocol::{AssetDistribution, ChainId, Config};
 use cosmwasm_std::{Addr, Decimal, Uint128};
-use cw_asset_v3::AssetInfo;
-use cw_storage_plus_120::{Item, Map};
+use cw_asset::AssetInfo;
+use cw_storage_plus::{Item, Map};
 use std::collections::HashSet;
 
 pub const CONFIG: Item<Config> = Item::new("config");

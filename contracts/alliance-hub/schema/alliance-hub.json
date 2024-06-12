@@ -1,6 +1,6 @@
 {
   "contract_name": "alliance-hub",
-  "contract_version": "0.1.2",
+  "contract_version": "0.1.3",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -352,7 +352,7 @@
         "additionalProperties": false
       },
       "AssetBase_for_Addr": {
-        "description": "Represents a fungible asset with a known amount\n\nEach asset instance contains two values: [`info`], which specifies the asset's type (CW20 or native), and its [`amount`], which specifies the asset's amount",
+        "description": "Represents a fungible asset with a known amount\n\nEach asset instance contains two values: `info`, which specifies the asset's type (CW20 or native), and its `amount`, which specifies the asset's amount.",
         "type": "object",
         "required": [
           "amount",
@@ -395,7 +395,7 @@
         "additionalProperties": false
       },
       "AssetInfoBase_for_Addr": {
-        "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+        "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
         "oneOf": [
           {
             "type": "object",
@@ -417,28 +417,6 @@
             "properties": {
               "cw20": {
                 "$ref": "#/definitions/Addr"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "cw1155"
-            ],
-            "properties": {
-              "cw1155": {
-                "type": "array",
-                "items": [
-                  {
-                    "$ref": "#/definitions/Addr"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "maxItems": 2,
-                "minItems": 2
               }
             },
             "additionalProperties": false
@@ -628,7 +606,7 @@
         "additionalProperties": false
       },
       "AssetInfoBase_for_Addr": {
-        "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+        "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
         "oneOf": [
           {
             "type": "object",
@@ -650,28 +628,6 @@
             "properties": {
               "cw20": {
                 "$ref": "#/definitions/Addr"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "cw1155"
-            ],
-            "properties": {
-              "cw1155": {
-                "type": "array",
-                "items": [
-                  {
-                    "$ref": "#/definitions/Addr"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "maxItems": 2,
-                "minItems": 2
               }
             },
             "additionalProperties": false
@@ -712,7 +668,7 @@
           "type": "string"
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -734,28 +690,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false
@@ -801,7 +735,7 @@
           "type": "string"
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -823,28 +757,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false
@@ -964,7 +876,7 @@
           "type": "string"
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -986,28 +898,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false
@@ -1049,7 +939,7 @@
           "additionalProperties": false
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -1071,28 +961,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false
@@ -1128,7 +996,7 @@
           "type": "string"
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -1150,28 +1018,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false
@@ -1197,7 +1043,7 @@
           "type": "string"
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -1219,28 +1065,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false
@@ -1300,7 +1124,7 @@
           "type": "string"
         },
         "AssetInfoBase_for_Addr": {
-          "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+          "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
           "oneOf": [
             {
               "type": "object",
@@ -1322,28 +1146,6 @@
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "cw1155"
-              ],
-              "properties": {
-                "cw1155": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "maxItems": 2,
-                  "minItems": 2
                 }
               },
               "additionalProperties": false

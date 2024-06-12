@@ -8,7 +8,7 @@ use crate::tests::helpers::{
 use alliance_protocol::alliance_protocol::{ExecuteMsg, StakedBalanceRes};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{coin, to_json_binary, Addr, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
-use cw_asset_v3::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo};
 use std::collections::HashMap;
 
 mod cw20_support {
