@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo};
 use std::collections::{HashMap, HashSet};
+use ve3_shared::msgs_asset_staking::AssetInfoWithConfig;
 
 #[cw_serde]
 pub struct Config {
@@ -15,6 +16,7 @@ pub struct Config {
     pub alliance_token_denom: String,
     pub alliance_token_supply: Uint128,
     pub reward_denom: String,
+    pub default_yearly_take_rate: Decimal,
 }
 
 #[cw_serde]
@@ -32,6 +34,7 @@ pub struct InstantiateMsg {
     pub operator: String,
     pub take_rate_taker: String,
     pub reward_denom: String,
+    pub default_yearly_take_rate: Decimal,
 }
 
 #[cw_serde]
@@ -45,6 +48,9 @@ pub enum ExecuteMsg {
     UpdateRewards {},
 
     // Privileged functions
+
+    // controller
+    UpdateAssetConfig(AssetInfoWithConfig),
 
     // operator
     DistributeTakeRate {
@@ -67,6 +73,7 @@ pub enum ExecuteMsg {
         oracle: Option<String>,
         operator: Option<String>,
         take_rate_taker: Option<String>,
+        default_yearly_take_rate: Option<Decimal>,
     },
 }
 

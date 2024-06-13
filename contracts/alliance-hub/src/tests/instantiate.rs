@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
-    from_json, Addr, Binary, CosmosMsg, Reply, Response, SubMsg, SubMsgResponse, SubMsgResult,
-    Timestamp, Uint128,
+    from_json, Addr, Binary, CosmosMsg, Decimal, Reply, Response, SubMsg, SubMsgResponse,
+    SubMsgResult, Timestamp, Uint128,
 };
 use terra_proto_rs::traits::MessageExt;
 
@@ -46,6 +46,8 @@ fn test_setup_contract() {
             alliance_token_denom: "".to_string(),
             alliance_token_supply: Uint128::new(0),
             last_reward_update_timestamp: Timestamp::default(),
+            take_rate_taker: Addr::unchecked("take_rate_taker"),
+            default_yearly_take_rate: Decimal::percent(5),
         }
     );
 }
@@ -116,6 +118,8 @@ fn test_reply_create_token() {
             alliance_token_denom: "factory/cosmos2contract/ualliance".to_string(),
             alliance_token_supply: Uint128::new(1000000000000),
             last_reward_update_timestamp: Timestamp::default(),
+            take_rate_taker: Addr::unchecked("take_rate_taker"),
+            default_yearly_take_rate: Decimal::percent(5),
         }
     );
 }
@@ -131,6 +135,8 @@ fn test_update_config() {
         controller,
         oracle,
         operator,
+        take_rate_taker,
+        default_yearly_take_rate,
         ..
     } = from_json(&query_config).unwrap();
 
@@ -138,12 +144,16 @@ fn test_update_config() {
     assert_eq!(controller, Addr::unchecked("controller"));
     assert_eq!(oracle, Addr::unchecked("oracle"));
     assert_eq!(operator, Addr::unchecked("operator"));
+    assert_eq!(take_rate_taker, Addr::unchecked("take_rate_taker"));
+    assert_eq!(default_yearly_take_rate, Decimal::percent(5));
 
     let msg = UpdateConfig {
         governance: Some("new_gov".to_string()),
         controller: Some("new_controller".to_string()),
         oracle: Some("new_oracle".to_string()),
         operator: Some("new_operator".to_string()),
+        take_rate_taker: Some("new_take_rate_taker".to_string()),
+        default_yearly_take_rate: Some(Decimal::percent(10)),
     };
 
     let result = execute(
@@ -191,6 +201,8 @@ fn test_update_config() {
         controller,
         oracle,
         operator,
+        take_rate_taker,
+        default_yearly_take_rate,
         ..
     } = from_json(&query_config).unwrap();
 
@@ -198,4 +210,6 @@ fn test_update_config() {
     assert_eq!(controller, Addr::unchecked("new_controller"));
     assert_eq!(oracle, Addr::unchecked("new_oracle"));
     assert_eq!(operator, Addr::unchecked("new_operator"));
+    assert_eq!(take_rate_taker, Addr::unchecked("new_take_rate_taker"));
+    assert_eq!(default_yearly_take_rate, Decimal::percent(10));
 }

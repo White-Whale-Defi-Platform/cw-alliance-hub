@@ -31,6 +31,8 @@ pub fn setup_contract(deps: DepsMut) -> Response<CustomExecuteMsg> {
         operator: "operator".to_string(),
         alliance_token_denom: "ualliance".to_string(),
         reward_denom: "uluna".to_string(),
+        take_rate_taker: "take_rate_taker".to_string(),
+        default_yearly_take_rate: Decimal::percent(5),
     };
     instantiate(deps, env, info, init_msg).unwrap()
 }

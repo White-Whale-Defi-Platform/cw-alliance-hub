@@ -19,7 +19,7 @@ use terra_proto_rs::cosmos::base::v1beta1::Coin;
 use terra_proto_rs::traits::Message;
 use ve3_shared::constants::SECONDS_PER_YEAR;
 use ve3_shared::extensions::asset_info_ext::AssetInfoExt;
-use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
+use ve3_shared::msgs_asset_staking::{AssetConfig, AssetConfigRuntime, AssetInfoWithConfig};
 
 // use alliance_protocol::alliance_oracle_types::QueryMsg as OracleQueryMsg;
 use alliance_protocol::alliance_protocol::{
@@ -100,6 +100,7 @@ pub fn instantiate(
         alliance_token_supply: Uint128::zero(),
         last_reward_update_timestamp: Timestamp::default(),
         reward_denom: msg.reward_denom,
+        default_yearly_take_rate: msg.default_yearly_take_rate,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -157,12 +158,16 @@ pub fn execute(
         ExecuteMsg::DistributeTakeRate { update, assets } => {
             distribute_take_rate(deps, env, info, update, assets)
         }
+        ExecuteMsg::UpdateAssetConfig(asset_config) => {
+            update_asset_config(deps, env, info, asset_config)
+        }
         ExecuteMsg::UpdateConfig {
             governance,
             controller,
             oracle,
             operator,
             take_rate_taker,
+            default_yearly_take_rate,
         } => update_config(
             deps,
             info,
@@ -171,6 +176,7 @@ pub fn execute(
             oracle,
             operator,
             take_rate_taker,
+            default_yearly_take_rate,
         ),
         _ => Err(ContractError::Std(StdError::generic_err(
             "unsupported action",
@@ -223,6 +229,7 @@ fn set_asset_reward_distribution(
     Ok(Response::new().add_attributes(vec![("action", "set_asset_reward_distribution")]))
 }
 
+//todo change whitelist assets method to take the AssetInfoWithConfig as we ve3 contract?
 fn whitelist_assets(
     deps: DepsMut,
     info: MessageInfo,
@@ -638,6 +645,7 @@ fn update_config(
     oracle: Option<String>,
     operator: Option<String>,
     take_rate_taker: Option<String>,
+    default_yearly_take_rate: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
     ensure!(
@@ -663,6 +671,10 @@ fn update_config(
 
     if let Some(take_rate_taker) = take_rate_taker {
         config.take_rate_taker = deps.api.addr_validate(&take_rate_taker)?;
+    }
+
+    if let Some(default_yearly_take_rate) = default_yearly_take_rate {
+        config.default_yearly_take_rate = default_yearly_take_rate;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -919,20 +931,74 @@ fn _take(
     Ok((AssetConfigRuntime::default(), total_balance))
 }
 
+fn update_asset_config(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    update: AssetInfoWithConfig,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    is_governance(&info, &config)?;
+    assert_asset_whitelisted(&deps, &update.info)?;
+
+    let current = ASSET_CONFIG
+        .may_load(deps.storage, &update.info)?
+        .unwrap_or_default();
+
+    let mut updated = current.clone();
+
+    let new_config = update.config.unwrap_or(AssetConfig {
+        yearly_take_rate: config.default_yearly_take_rate,
+        stake_config: ve3_shared::stake_config::StakeConfig::Default, //TODO shall e have an implementation for WW?
+    });
+
+    updated.stake_config = new_config.stake_config;
+    updated.yearly_take_rate = new_config.yearly_take_rate;
+    ASSET_CONFIG.save(deps.storage, &update.info, &updated)?;
+
+    let mut msgs = vec![];
+    if current.stake_config != updated.stake_config {
+        // if stake config changed, withdraw from one (or do nothing), deposit on the other.
+        let (balance, _) = TOTAL_BALANCES_SHARES.load(deps.storage, &update.info)?;
+        let available = balance - current.taken;
+        let asset = update.info.with_balance(available);
+
+        let mut unstake_msgs =
+            current
+                .stake_config
+                .unstake_check_received_msg(&deps, &env, asset.clone())?;
+        let mut stake_msgs = updated
+            .stake_config
+            .stake_check_received_msg(&deps, &env, asset)?;
+
+        msgs.append(&mut unstake_msgs);
+        msgs.append(&mut stake_msgs);
+    }
+
+    Ok(Response::new().add_attributes(vec![
+        ("action", "update_asset_config"),
+        ("asset", &update.info.to_string()),
+    ]))
+}
+
 // Controller is used to perform administrative operations that deals with delegating the virtual
 // tokens to the expected validators
 fn is_controller(info: &MessageInfo, config: &Config) -> Result<(), ContractError> {
-    if info.sender != config.controller {
-        return Err(ContractError::Unauthorized {});
-    }
+    ensure!(
+        info.sender == config.controller,
+        ContractError::Unauthorized {}
+    );
+
     Ok(())
 }
 
 // Only governance (through a on-chain prop) can change the whitelisted assets
 fn is_governance(info: &MessageInfo, config: &Config) -> Result<(), ContractError> {
-    if info.sender != config.governance {
-        return Err(ContractError::Unauthorized {});
-    }
+    ensure!(
+        info.sender == config.governance,
+        ContractError::Unauthorized {}
+    );
+
     Ok(())
 }
 
@@ -943,4 +1009,10 @@ fn is_authorized(info: &MessageInfo, config: &Config) -> Result<(), ContractErro
         ContractError::Unauthorized {}
     );
     Ok(())
+}
+
+fn assert_asset_whitelisted(deps: &DepsMut, asset: &AssetInfo) -> Result<ChainId, ContractError> {
+    WHITELIST
+        .load(deps.storage, asset)
+        .map_err(|_| ContractError::AssetNotWhitelisted {})
 }
