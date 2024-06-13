@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo};
 use std::collections::{HashMap, HashSet};
-use ve3_shared::msgs_asset_staking::AssetInfoWithConfig;
+use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
 
 #[cw_serde]
 pub struct Config {
@@ -58,7 +58,7 @@ pub enum ExecuteMsg {
         assets: Option<Vec<AssetInfo>>,
     },
 
-    WhitelistAssets(HashMap<ChainId, Vec<AssetInfo>>),
+    WhitelistAssets(HashMap<ChainId, Vec<AssetInfoWithConfig>>),
     RemoveAssets(Vec<AssetInfo>),
     UpdateRewardsCallback {},
     AllianceDelegate(AllianceDelegateMsg),
@@ -168,6 +168,8 @@ pub struct MigrateMsg {}
 pub struct StakedBalanceRes {
     pub asset: AssetInfo,
     pub balance: Uint128,
+    pub shares: Uint128,
+    pub config: AssetConfigRuntime,
 }
 
 #[cw_serde]
@@ -175,4 +177,10 @@ pub struct PendingRewardsRes {
     pub staked_asset: AssetInfo,
     pub reward_asset: AssetInfo,
     pub rewards: Uint128,
+}
+
+#[cw_serde]
+pub struct AssetInfoWithConfig {
+    pub info: AssetInfo,
+    pub yearly_take_rate: Option<Decimal>,
 }

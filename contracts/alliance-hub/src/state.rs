@@ -11,7 +11,6 @@ pub const WHITELIST: Map<&AssetInfo, ChainId> = Map::new("whitelist");
 pub const BALANCES: Map<(Addr, &AssetInfo), Uint128> = Map::new("balances");
 pub const TOTAL_BALANCES_SHARES: Map<&AssetInfo, (Uint128, Uint128)> =
     Map::new("total_balances_shares");
-pub const TOTAL_BALANCES: Map<&AssetInfo, Uint128> = Map::new("total_balances");
 
 pub const VALIDATORS: Item<HashSet<String>> = Item::new("validators");
 

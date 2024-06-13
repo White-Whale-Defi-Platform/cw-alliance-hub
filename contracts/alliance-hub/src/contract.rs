@@ -18,21 +18,22 @@ use terra_proto_rs::alliance::alliance::{
 use terra_proto_rs::cosmos::base::v1beta1::Coin;
 use terra_proto_rs::traits::Message;
 use ve3_shared::constants::SECONDS_PER_YEAR;
+use ve3_shared::error::SharedError;
 use ve3_shared::extensions::asset_info_ext::AssetInfoExt;
-use ve3_shared::msgs_asset_staking::{AssetConfig, AssetConfigRuntime, AssetInfoWithConfig};
+use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
+use ve3_shared::stake_config::StakeConfig;
 
 // use alliance_protocol::alliance_oracle_types::QueryMsg as OracleQueryMsg;
 use alliance_protocol::alliance_protocol::{
-    AllianceDelegateMsg, AllianceRedelegateMsg, AllianceUndelegateMsg, AssetDistribution, ChainId,
-    Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
+    AllianceDelegateMsg, AllianceRedelegateMsg, AllianceUndelegateMsg, AssetDistribution,
+    AssetInfoWithConfig, ChainId, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
 };
 
 // use alliance_protocol::alliance_oracle_types::{AssetStaked, ChainId, EmissionsDistribution};
 use crate::error::ContractError;
 use crate::state::{
     ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG, TEMP_BALANCE,
-    TOTAL_BALANCES, TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS,
-    WHITELIST,
+    TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
 };
 use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
 
@@ -139,7 +140,7 @@ pub fn execute(
                 info.sender,
             )
         }
-        ExecuteMsg::Unstake(asset) => unstake(deps, info, asset),
+        ExecuteMsg::Unstake(asset) => unstake(deps, env, info, asset),
         ExecuteMsg::ClaimRewards(asset) => claim_rewards(deps, info, asset),
         ExecuteMsg::UpdateRewards {} => update_rewards(deps, env, info),
         // ualliance token delegation methods
@@ -201,7 +202,7 @@ fn receive_cw20(
             let asset = AssetInfo::Cw20(info.sender.clone());
             stake(deps, env, info, asset, cw20_msg.amount, sender)
         }
-        Cw20HookMsg::Unstake(asset) => unstake(deps, info, asset),
+        Cw20HookMsg::Unstake(asset) => unstake(deps, env, info, asset),
     }
 }
 
@@ -229,29 +230,54 @@ fn set_asset_reward_distribution(
     Ok(Response::new().add_attributes(vec![("action", "set_asset_reward_distribution")]))
 }
 
-//todo change whitelist assets method to take the AssetInfoWithConfig as we ve3 contract?
 fn whitelist_assets(
     deps: DepsMut,
     info: MessageInfo,
-    assets_request: HashMap<ChainId, Vec<AssetInfo>>,
+    assets_request: HashMap<ChainId, Vec<AssetInfoWithConfig>>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     is_governance(&info, &config)?;
+
     let mut attrs = vec![("action".to_string(), "whitelist_assets".to_string())];
+
     for (chain_id, assets) in &assets_request {
-        for asset in assets {
-            WHITELIST.save(deps.storage, asset, chain_id)?;
-            ASSET_REWARD_RATE.update(deps.storage, asset, |rate| -> StdResult<_> {
-                Ok(rate.unwrap_or(Decimal::zero()))
-            })?;
+        for asset_with_config in assets {
+            WHITELIST.save(deps.storage, &asset_with_config.info, chain_id)?;
+            ASSET_REWARD_RATE.update(
+                deps.storage,
+                &asset_with_config.info,
+                |rate| -> StdResult<_> { Ok(rate.unwrap_or(Decimal::zero())) },
+            )?;
+
+            let current_config = ASSET_CONFIG
+                .may_load(deps.storage, &asset_with_config.info)?
+                .unwrap_or_default();
+
+            let new_yearly_take_rate = asset_with_config
+                .yearly_take_rate
+                .unwrap_or(current_config.yearly_take_rate);
+
+            ASSET_CONFIG.save(
+                deps.storage,
+                &asset_with_config.info,
+                &AssetConfigRuntime {
+                    yearly_take_rate: new_yearly_take_rate,
+                    stake_config: StakeConfig::Default, // dummy value
+
+                    last_taken_s: 0,
+                    taken: current_config.taken,
+                    harvested: current_config.harvested,
+                },
+            )?;
         }
-        attrs.push(("chain_id".to_string(), chain_id.to_string()));
+
         let assets_str = assets
             .iter()
-            .map(|asset| asset.to_string())
+            .map(|asset| asset.info.to_string())
             .collect::<Vec<String>>()
             .join(",");
 
+        attrs.push(("chain_id".to_string(), chain_id.to_string()));
         attrs.push(("assets".to_string(), assets_str.to_string()));
     }
     Ok(Response::new().add_attributes(attrs))
@@ -277,62 +303,78 @@ fn remove_assets(
 }
 
 fn stake(
-    deps: DepsMut,
-    _env: Env,
+    mut deps: DepsMut,
+    env: Env,
     _info: MessageInfo,
     asset: AssetInfoBase<Addr>,
     amount: Uint128,
-    sender: Addr,
+    recipient: Addr,
 ) -> Result<Response, ContractError> {
-    WHITELIST
-        .load(deps.storage, &asset)
-        .map_err(|_| ContractError::AssetNotWhitelisted {})?;
+    assert_asset_whitelisted(&deps, &asset)?;
 
-    let rewards = _claim_reward(deps.storage, sender.clone(), asset.clone())?;
+    let rewards = _claim_reward(deps.storage, recipient.clone(), asset.clone())?;
     if !rewards.is_zero() {
         UNCLAIMED_REWARDS.update(
             deps.storage,
-            (sender.clone(), &asset),
+            (recipient.clone(), &asset),
             |balance| -> Result<_, ContractError> {
                 Ok(balance.unwrap_or(Uint128::zero()) + rewards)
             },
         )?;
     }
 
+    let (balance, shares) = TOTAL_BALANCES_SHARES
+        .may_load(deps.storage, &asset)?
+        .unwrap_or_default();
+    let (_, asset_available) = _take(&mut deps, &env, &asset, balance, true)?;
+    let share_amount = compute_share_amount(shares, amount, asset_available);
+
     BALANCES.update(
         deps.storage,
-        (sender.clone(), &asset),
+        (recipient.clone(), &asset),
         |balance| -> Result<_, ContractError> {
-            match balance {
-                Some(balance) => Ok(balance + amount),
-                None => Ok(amount),
-            }
+            Ok(balance.unwrap_or_default().checked_add(share_amount)?)
         },
     )?;
-    TOTAL_BALANCES.update(
+
+    TOTAL_BALANCES_SHARES.save(
         deps.storage,
         &asset,
-        |balance| -> Result<_, ContractError> { Ok(balance.unwrap_or(Uint128::zero()) + amount) },
+        &(
+            balance.checked_add(amount)?,
+            shares.checked_add(share_amount)?,
+        ),
     )?;
 
     let asset_reward_rate = ASSET_REWARD_RATE
         .load(deps.storage, &asset)
         .unwrap_or(Decimal::zero());
-    USER_ASSET_REWARD_RATE.save(deps.storage, (sender.clone(), &asset), &asset_reward_rate)?;
+    USER_ASSET_REWARD_RATE.save(
+        deps.storage,
+        (recipient.clone(), &asset),
+        &asset_reward_rate,
+    )?;
 
     Ok(Response::new().add_attributes(vec![
         ("action", "stake"),
-        ("user", (sender.as_ref())),
+        ("user", recipient.as_ref()),
         ("asset", &asset.to_string()),
         ("amount", &amount.to_string()),
+        ("share", &share_amount.to_string()),
     ]))
 }
 
-fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, ContractError> {
+fn unstake(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset: Asset,
+) -> Result<Response, ContractError> {
     let sender = info.sender.clone();
-    if asset.amount.is_zero() {
-        return Err(ContractError::AmountCannotBeZero {});
-    }
+    ensure!(
+        !asset.amount.is_zero(),
+        ContractError::AmountCannotBeZero {}
+    );
 
     let rewards = _claim_reward(deps.storage, sender.clone(), asset.info.clone())?;
     if !rewards.is_zero() {
@@ -345,41 +387,58 @@ fn unstake(deps: DepsMut, info: MessageInfo, asset: Asset) -> Result<Response, C
         )?;
     }
 
-    BALANCES.update(
+    let (balance, shares) = TOTAL_BALANCES_SHARES
+        .may_load(deps.storage, &asset.info)?
+        .unwrap_or_default();
+    let (_, asset_available) = _take(&mut deps, &env, &asset.info, balance, true)?;
+
+    let mut withdraw_amount = asset.amount;
+    let mut share_amount = compute_share_amount(shares, withdraw_amount, asset_available);
+
+    let current_user_share = BALANCES
+        .may_load(deps.storage, (sender.clone(), &asset.info))?
+        .unwrap_or_default();
+
+    ensure!(
+        !current_user_share.is_zero(),
+        ContractError::AmountCannotBeZero {}
+    );
+
+    if current_user_share < share_amount {
+        share_amount = current_user_share;
+        withdraw_amount = compute_balance_amount(shares, share_amount, asset_available)
+    }
+
+    BALANCES.save(
         deps.storage,
         (sender, &asset.info),
-        |balance| -> Result<_, ContractError> {
-            match balance {
-                Some(balance) => {
-                    if balance < asset.amount {
-                        return Err(ContractError::InsufficientBalance {});
-                    }
-                    Ok(balance - asset.amount)
-                }
-                None => Err(ContractError::InsufficientBalance {}),
-            }
-        },
-    )?;
-    TOTAL_BALANCES.update(
-        deps.storage,
-        &asset.info,
-        |balance| -> Result<_, ContractError> {
-            let balance = balance.unwrap_or(Uint128::zero());
-            if balance < asset.amount {
-                return Err(ContractError::InsufficientBalance {});
-            }
-            Ok(balance - asset.amount)
-        },
+        &(current_user_share.checked_sub(share_amount)?),
     )?;
 
-    let msg = asset.transfer_msg(&info.sender)?;
+    TOTAL_BALANCES_SHARES.save(
+        deps.storage,
+        &asset.info,
+        &(
+            balance
+                .checked_sub(withdraw_amount)
+                .map_err(|_| SharedError::InsufficientBalance("total balance".to_string()))?,
+            shares
+                .checked_sub(share_amount)
+                .map_err(|_| SharedError::InsufficientBalance("total shares".to_string()))?,
+        ),
+    )?;
+
+    let msg = asset
+        .info
+        .with_balance(withdraw_amount)
+        .transfer_msg(&info.sender)?;
 
     Ok(Response::new()
         .add_attributes(vec![
             ("action", "unstake"),
             ("user", info.sender.as_ref()),
             ("asset", &asset.info.to_string()),
-            ("amount", &asset.amount.to_string()),
+            ("amount", &withdraw_amount.to_string()),
         ])
         .add_message(msg))
 }
@@ -596,9 +655,11 @@ fn update_reward_callback(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    if info.sender != env.contract.address {
-        return Err(ContractError::Unauthorized {});
-    }
+    ensure!(
+        info.sender == env.contract.address,
+        ContractError::Unauthorized {}
+    );
+
     let config = CONFIG.load(deps.storage)?;
     let reward_asset = AssetInfo::native(config.reward_denom);
     let current_balance = reward_asset.query_balance(&deps.querier, env.contract.address)?;
@@ -617,12 +678,11 @@ fn update_reward_callback(
             / total_distribution;
 
         // If there are no balances, we stop updating the rate. This means that the emissions are not directed to any stakers.
-        let total_balance = TOTAL_BALANCES
+        let (_, total_shares) = TOTAL_BALANCES_SHARES
             .load(deps.storage, &asset_distribution.asset)
-            .unwrap_or(Uint128::zero());
-        if !total_balance.is_zero() {
-            let rate_to_update =
-                total_reward_distributed / Decimal::from_atomics(total_balance, 0)?;
+            .unwrap_or_default();
+        if !total_shares.is_zero() {
+            let rate_to_update = total_reward_distributed / Decimal::from_atomics(total_shares, 0)?;
             if rate_to_update > Decimal::zero() {
                 ASSET_REWARD_RATE.update(
                     deps.storage,
@@ -947,13 +1007,13 @@ fn update_asset_config(
 
     let mut updated = current.clone();
 
-    let new_config = update.config.unwrap_or(AssetConfig {
-        yearly_take_rate: config.default_yearly_take_rate,
-        stake_config: ve3_shared::stake_config::StakeConfig::Default, //TODO shall e have an implementation for WW?
-    });
+    let new_yearly_take_rate = update
+        .yearly_take_rate
+        .unwrap_or(config.default_yearly_take_rate);
 
-    updated.stake_config = new_config.stake_config;
-    updated.yearly_take_rate = new_config.yearly_take_rate;
+    updated.yearly_take_rate = new_yearly_take_rate;
+    // dummy value
+    updated.stake_config = ve3_shared::stake_config::StakeConfig::Default;
     ASSET_CONFIG.save(deps.storage, &update.info, &updated)?;
 
     let mut msgs = vec![];
@@ -979,6 +1039,34 @@ fn update_asset_config(
         ("action", "update_asset_config"),
         ("asset", &update.info.to_string()),
     ]))
+}
+
+pub(crate) fn compute_share_amount(
+    shares: Uint128,
+    balance_amount: Uint128,
+    asset_available: Uint128,
+) -> Uint128 {
+    if asset_available.is_zero() {
+        balance_amount
+    } else if shares == asset_available {
+        return balance_amount;
+    } else {
+        balance_amount.multiply_ratio(shares, asset_available)
+    }
+}
+
+pub(crate) fn compute_balance_amount(
+    shares: Uint128,
+    share_amount: Uint128,
+    asset_available: Uint128,
+) -> Uint128 {
+    if shares.is_zero() {
+        Uint128::zero()
+    } else if shares == asset_available {
+        return share_amount;
+    } else {
+        share_amount.multiply_ratio(asset_available, shares)
+    }
 }
 
 // Controller is used to perform administrative operations that deals with delegating the virtual

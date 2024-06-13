@@ -1,3 +1,4 @@
+use crate::contract::compute_balance_amount;
 use alliance_protocol::alliance_protocol::{
     AllPendingRewardsQuery, AllStakedBalancesQuery, AssetQuery, PendingRewardsRes, QueryMsg,
     StakedBalanceRes, WhitelistedAssetsResponse,
@@ -9,8 +10,8 @@ use cw_asset::AssetInfo;
 use std::collections::HashMap;
 
 use crate::state::{
-    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG, TOTAL_BALANCES,
-    UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
+    ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG,
+    TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -62,11 +63,17 @@ fn get_rewards_distribution(deps: Deps) -> StdResult<Binary> {
 fn get_staked_balance(deps: Deps, asset_query: AssetQuery) -> StdResult<Binary> {
     let addr = deps.api.addr_validate(&asset_query.address)?;
     let key = (addr, &asset_query.asset);
-    let balance = BALANCES.load(deps.storage, key)?;
+    let user_shares = BALANCES.load(deps.storage, key)?;
+    let (balance, shares) = TOTAL_BALANCES_SHARES.load(deps.storage, &asset_query.asset)?;
+    let config = ASSET_CONFIG
+        .may_load(deps.storage, &asset_query.asset)?
+        .unwrap_or_default();
 
     to_json_binary(&StakedBalanceRes {
         asset: asset_query.asset,
-        balance,
+        balance: compute_balance_amount(shares, user_shares, balance.checked_sub(config.taken)?),
+        shares: user_shares,
+        config,
     })
 }
 
@@ -98,14 +105,22 @@ fn get_all_staked_balances(deps: Deps, asset_query: AllStakedBalancesQuery) -> S
         // Build the required key to recover the BALANCES
         let (asset_info, _) = asset_res?;
         let stake_key = (addr.clone(), &asset_info);
-        let balance = BALANCES
+        let user_shares = BALANCES
             .load(deps.storage, stake_key)
             .unwrap_or(Uint128::zero());
+        let (balance, shares) = TOTAL_BALANCES_SHARES.load(deps.storage, &asset_info)?;
+        let config = ASSET_CONFIG.load(deps.storage, &asset_info)?;
 
         // Append the request
         res.push(StakedBalanceRes {
-            asset: asset_info.clone(),
-            balance,
+            asset: asset_info,
+            balance: compute_balance_amount(
+                shares,
+                user_shares,
+                balance.checked_sub(config.taken)?,
+            ),
+            shares: user_shares,
+            config,
         })
     }
 
@@ -138,11 +153,20 @@ fn get_all_pending_rewards(deps: Deps, query: AllPendingRewardsQuery) -> StdResu
 }
 
 fn get_total_staked_balances(deps: Deps) -> StdResult<Binary> {
-    let total_staked_balances: StdResult<Vec<StakedBalanceRes>> = TOTAL_BALANCES
+    let total_staked_balances: StdResult<Vec<StakedBalanceRes>> = TOTAL_BALANCES_SHARES
         .range(deps.storage, None, None, Order::Ascending)
         .map(|total_balance| -> StdResult<StakedBalanceRes> {
-            let (asset, balance) = total_balance?;
-            Ok(StakedBalanceRes { asset, balance })
+            let (asset, (balance, shares)) = total_balance?;
+            println!("here");
+            let config = ASSET_CONFIG.load(deps.storage, &asset)?;
+            println!("here2");
+
+            Ok(StakedBalanceRes {
+                asset,
+                balance,
+                shares,
+                config,
+            })
         })
         .collect();
     to_json_binary(&total_staked_balances?)

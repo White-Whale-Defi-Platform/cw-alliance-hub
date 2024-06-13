@@ -14,7 +14,7 @@ use alliance_protocol::alliance_protocol::{AssetDistribution, ExecuteMsg, Pendin
 use crate::contract::execute;
 use crate::error::ContractError;
 use crate::state::{
-    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, TEMP_BALANCE, TOTAL_BALANCES,
+    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, TEMP_BALANCE, TOTAL_BALANCES_SHARES,
     USER_ASSET_REWARD_RATE, VALIDATORS,
 };
 use crate::tests::helpers::{
@@ -104,18 +104,18 @@ fn update_reward_callback() {
     setup_contract(deps.as_mut());
     set_alliance_asset(deps.as_mut());
 
-    TOTAL_BALANCES
+    TOTAL_BALANCES_SHARES
         .save(
             deps.as_mut().storage,
             &AssetInfo::Native("aWHALE".to_string()),
-            &Uint128::new(1000000),
+            &(Uint128::new(1000000), Uint128::new(1000000)),
         )
         .unwrap();
-    TOTAL_BALANCES
+    TOTAL_BALANCES_SHARES
         .save(
             deps.as_mut().storage,
             &AssetInfo::Native("bWHALE".to_string()),
-            &Uint128::new(100000),
+            &(Uint128::new(100000), Uint128::new(100000)),
         )
         .unwrap();
 
