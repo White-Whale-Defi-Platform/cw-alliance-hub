@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, from_json, to_json_binary, Addr, Binary, Coin as CwCoin, CosmosMsg, Decimal, DepsMut,
-    Empty, Env, MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Timestamp,
-    Uint128, WasmMsg,
+    Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, Storage, SubMsg,
+    Timestamp, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -17,6 +17,9 @@ use terra_proto_rs::alliance::alliance::{
 };
 use terra_proto_rs::cosmos::base::v1beta1::Coin;
 use terra_proto_rs::traits::Message;
+use ve3_shared::constants::SECONDS_PER_YEAR;
+use ve3_shared::extensions::asset_info_ext::AssetInfoExt;
+use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
 
 // use alliance_protocol::alliance_oracle_types::QueryMsg as OracleQueryMsg;
 use alliance_protocol::alliance_protocol::{
@@ -27,8 +30,9 @@ use alliance_protocol::alliance_protocol::{
 // use alliance_protocol::alliance_oracle_types::{AssetStaked, ChainId, EmissionsDistribution};
 use crate::error::ContractError;
 use crate::state::{
-    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG, TEMP_BALANCE, TOTAL_BALANCES,
-    UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
+    ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG, TEMP_BALANCE,
+    TOTAL_BALANCES, TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS,
+    WHITELIST,
 };
 use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
 
@@ -39,7 +43,7 @@ const CREATE_REPLY_ID: u64 = 1;
 const CLAIM_REWARD_ERROR_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version: Version = CONTRACT_VERSION.parse()?;
     let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
 
@@ -64,6 +68,7 @@ pub fn instantiate(
     let controller_address = deps.api.addr_validate(msg.controller.as_str())?;
     let oracle_address = deps.api.addr_validate(msg.oracle.as_str())?;
     let operator_address = deps.api.addr_validate(msg.operator.as_str())?;
+    let take_rate_taker_address = deps.api.addr_validate(msg.take_rate_taker.as_str())?;
     let create_msg = TokenExecuteMsg::CreateDenom {
         subdenom: msg.alliance_token_denom.to_string(),
     };
@@ -90,6 +95,7 @@ pub fn instantiate(
         controller: controller_address,
         oracle: oracle_address,
         operator: operator_address,
+        take_rate_taker: take_rate_taker_address,
         alliance_token_denom: "".to_string(),
         alliance_token_supply: Uint128::zero(),
         last_reward_update_timestamp: Timestamp::default(),
@@ -148,12 +154,24 @@ pub fn execute(
         // ExecuteMsg::RebalanceEmissionsCallback {} => rebalance_emissions_callback(deps, env, info),
         // Allow Governance to overwrite the AssetDistributions for the reward emissions
         // Generic unsupported handler returns a StdError
+        ExecuteMsg::DistributeTakeRate { update, assets } => {
+            distribute_take_rate(deps, env, info, update, assets)
+        }
         ExecuteMsg::UpdateConfig {
             governance,
             controller,
             oracle,
             operator,
-        } => update_config(deps, info, governance, controller, oracle, operator),
+            take_rate_taker,
+        } => update_config(
+            deps,
+            info,
+            governance,
+            controller,
+            oracle,
+            operator,
+            take_rate_taker,
+        ),
         _ => Err(ContractError::Std(StdError::generic_err(
             "unsupported action",
         ))),
@@ -619,6 +637,7 @@ fn update_config(
     controller: Option<String>,
     oracle: Option<String>,
     operator: Option<String>,
+    take_rate_taker: Option<String>,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
     ensure!(
@@ -640,6 +659,10 @@ fn update_config(
 
     if let Some(operator) = operator {
         config.operator = deps.api.addr_validate(&operator)?;
+    }
+
+    if let Some(take_rate_taker) = take_rate_taker {
+        config.take_rate_taker = deps.api.addr_validate(&take_rate_taker)?;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -795,6 +818,105 @@ pub fn reply(
         }
         _ => Err(ContractError::InvalidReplyId(reply.id)),
     }
+}
+
+fn distribute_take_rate(
+    mut deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    update: Option<bool>,
+    assets: Option<Vec<AssetInfo>>,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let assets = if let Some(assets) = assets {
+        assets
+    } else {
+        WHITELIST
+            .keys(deps.storage, None, None, Order::Ascending)
+            .collect::<StdResult<_>>()?
+    };
+
+    let mut response = Response::new().add_attributes(vec![("action", "distribute_take_rate")]);
+    let recipient = config.take_rate_taker;
+    for asset in assets {
+        let mut config = if update == Some(true) {
+            // if it should also update extraction, take the asset config from the result.
+            let (balance, _) = TOTAL_BALANCES_SHARES
+                .may_load(deps.storage, &asset)?
+                .unwrap_or_default();
+            // no need to save, as we will save it anyways
+            let (config, _) = _take(&mut deps, &env, &asset, balance, false)?;
+            config
+        } else {
+            // otherwise just load it.
+            ASSET_CONFIG
+                .may_load(deps.storage, &asset)?
+                .unwrap_or_default()
+        };
+
+        let take_amount = config.taken.checked_sub(config.harvested)?;
+        if take_amount.is_zero() {
+            response = response.add_attribute(asset.to_string(), "skip");
+            continue;
+        }
+
+        let take_asset = asset.with_balance(take_amount);
+
+        config.harvested = config.taken;
+        ASSET_CONFIG.save(deps.storage, &asset, &config)?;
+
+        // unstake assets if necessary
+        let unstake_msgs =
+            config
+                .stake_config
+                .unstake_check_received_msg(&deps, &env, take_asset.clone())?;
+        // transfer to recipient
+        let take_msg = take_asset.transfer_msg(recipient.clone())?;
+
+        response = response
+            .add_messages(unstake_msgs)
+            .add_message(take_msg)
+            .add_attribute("take", format!("{0}{1}", take_amount, asset));
+    }
+    Ok(response)
+}
+
+fn _take(
+    deps: &mut DepsMut,
+    env: &Env,
+    asset: &AssetInfo,
+    total_balance: Uint128,
+    save_config: bool,
+) -> Result<(AssetConfigRuntime, Uint128), ContractError> {
+    let config = ASSET_CONFIG.may_load(deps.storage, asset)?;
+
+    if let Some(mut config) = config {
+        if config.yearly_take_rate.is_zero() {
+            let available = total_balance.checked_sub(config.taken)?;
+            return Ok((config, available));
+        }
+
+        // only take if last taken set
+        if config.last_taken_s != 0 {
+            let take_diff_s = Uint128::new((env.block.time.seconds() - config.last_taken_s).into());
+            // total_balance * yearly_take_rate * taken_diff_s / SECONDS_PER_YEAR
+            let take_amount = config.yearly_take_rate
+                * total_balance.multiply_ratio(take_diff_s, SECONDS_PER_YEAR);
+
+            config.taken = config.taken.checked_add(take_amount)?;
+        }
+
+        config.last_taken_s = env.block.time.seconds();
+
+        if save_config {
+            ASSET_CONFIG.save(deps.storage, asset, &config)?;
+        }
+
+        let available = total_balance.checked_sub(config.taken)?;
+        return Ok((config, available));
+    }
+
+    Ok((AssetConfigRuntime::default(), total_balance))
 }
 
 // Controller is used to perform administrative operations that deals with delegating the virtual

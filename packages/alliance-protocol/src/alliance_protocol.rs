@@ -10,6 +10,7 @@ pub struct Config {
     pub controller: Addr,
     pub oracle: Addr,
     pub operator: Addr,
+    pub take_rate_taker: Addr,
     pub last_reward_update_timestamp: Timestamp,
     pub alliance_token_denom: String,
     pub alliance_token_supply: Uint128,
@@ -29,6 +30,7 @@ pub struct InstantiateMsg {
     pub alliance_token_denom: String,
     pub oracle: String,
     pub operator: String,
+    pub take_rate_taker: String,
     pub reward_denom: String,
 }
 
@@ -43,6 +45,13 @@ pub enum ExecuteMsg {
     UpdateRewards {},
 
     // Privileged functions
+
+    // operator
+    DistributeTakeRate {
+        update: Option<bool>,
+        assets: Option<Vec<AssetInfo>>,
+    },
+
     WhitelistAssets(HashMap<ChainId, Vec<AssetInfo>>),
     RemoveAssets(Vec<AssetInfo>),
     UpdateRewardsCallback {},
@@ -57,6 +66,7 @@ pub enum ExecuteMsg {
         controller: Option<String>,
         oracle: Option<String>,
         operator: Option<String>,
+        take_rate_taker: Option<String>,
     },
 }
 

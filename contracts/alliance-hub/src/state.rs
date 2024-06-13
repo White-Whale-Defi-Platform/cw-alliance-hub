@@ -3,13 +3,19 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use std::collections::HashSet;
+use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const WHITELIST: Map<&AssetInfo, ChainId> = Map::new("whitelist");
+//todo to rename to SHARES
 pub const BALANCES: Map<(Addr, &AssetInfo), Uint128> = Map::new("balances");
+pub const TOTAL_BALANCES_SHARES: Map<&AssetInfo, (Uint128, Uint128)> =
+    Map::new("total_balances_shares");
 pub const TOTAL_BALANCES: Map<&AssetInfo, Uint128> = Map::new("total_balances");
 
 pub const VALIDATORS: Item<HashSet<String>> = Item::new("validators");
+
+pub const ASSET_CONFIG: Map<&AssetInfo, AssetConfigRuntime> = Map::new("asset_config");
 
 pub const ASSET_REWARD_DISTRIBUTION: Item<Vec<AssetDistribution>> =
     Item::new("asset_reward_distribution");
