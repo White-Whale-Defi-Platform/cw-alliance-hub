@@ -9,7 +9,9 @@ use cw_asset::AssetInfo;
 use terra_proto_rs::alliance::alliance::MsgClaimDelegationRewards;
 use terra_proto_rs::traits::Message;
 
-use alliance_protocol::alliance_protocol::{AssetDistribution, ExecuteMsg, PendingRewardsRes};
+use alliance_protocol::alliance_protocol::{
+    AssetDistribution, AssetInfoWithConfig, ExecuteMsg, PendingRewardsRes,
+};
 
 use crate::contract::execute;
 use crate::error::ContractError;
@@ -192,7 +194,10 @@ fn claim_user_rewards() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("aWHALE".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("aWHALE".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     stake(deps.as_mut(), "user1", 1000000, "aWHALE");
@@ -347,7 +352,10 @@ fn claim_user_rewards_after_staking() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("aWHALE".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("aWHALE".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     stake(deps.as_mut(), "user1", 1000000, "aWHALE");
@@ -420,8 +428,14 @@ fn claim_rewards_after_staking_and_unstaking() {
         HashMap::from([(
             "chain-1".to_string(),
             vec![
-                AssetInfo::Native("aWHALE".to_string()),
-                AssetInfo::Native("bWHALE".to_string()),
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("aWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("bWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
             ],
         )]),
     );
@@ -511,8 +525,14 @@ fn claim_rewards_after_rebalancing_emissions() {
         HashMap::from([(
             "chain-1".to_string(),
             vec![
-                AssetInfo::Native("aWHALE".to_string()),
-                AssetInfo::Native("bWHALE".to_string()),
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("aWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("bWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
             ],
         )]),
     );

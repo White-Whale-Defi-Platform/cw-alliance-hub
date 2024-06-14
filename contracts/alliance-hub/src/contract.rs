@@ -31,6 +31,7 @@ use alliance_protocol::alliance_protocol::{
 
 // use alliance_protocol::alliance_oracle_types::{AssetStaked, ChainId, EmissionsDistribution};
 use crate::error::ContractError;
+use crate::migrations::migrate_state;
 use crate::state::{
     ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG, TEMP_BALANCE,
     TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
@@ -52,6 +53,8 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
         storage_version < version,
         StdError::generic_err("Invalid contract version")
     );
+
+    migrate_state(deps.branch())?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
@@ -697,6 +700,7 @@ fn update_reward_callback(
     Ok(Response::new().add_attributes(vec![("action", "update_rewards_callback")]))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_config(
     deps: DepsMut,
     info: MessageInfo,

@@ -5,7 +5,7 @@ use cw_storage_plus::Map;
 
 use crate::state::TOTAL_BALANCES_SHARES;
 
-pub(crate) fn migrate_state(mut deps: DepsMut) -> Result<(), ContractError> {
+pub(crate) fn migrate_state(deps: DepsMut) -> Result<(), ContractError> {
     const OLD_TOTAL_BALANCES: Map<&AssetInfo, Uint128> = Map::new("total_balances");
 
     let old_map = OLD_TOTAL_BALANCES

@@ -1,13 +1,18 @@
+use std::collections::HashMap;
+
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::{from_json, Decimal, Response};
+use cw_asset::AssetInfo;
+
+use alliance_protocol::alliance_protocol::{
+    AssetInfoWithConfig, ExecuteMsg, QueryMsg, WhitelistedAssetsResponse,
+};
+
 use crate::contract::execute;
 use crate::error::ContractError;
 use crate::query::query;
 use crate::state::WHITELIST;
 use crate::tests::helpers::{remove_assets, setup_contract, whitelist_assets};
-use alliance_protocol::alliance_protocol::{ExecuteMsg, QueryMsg, WhitelistedAssetsResponse};
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_json, Response};
-use cw_asset::AssetInfo;
-use std::collections::HashMap;
 
 #[test]
 fn test_whitelist_assets() {
@@ -17,7 +22,10 @@ fn test_whitelist_assets() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("asset1".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("asset1".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     assert_eq!(
@@ -25,7 +33,7 @@ fn test_whitelist_assets() {
         Response::default().add_attributes(vec![
             ("action", "whitelist_assets"),
             ("chain_id", "chain-1"),
-            ("assets", "native:asset1")
+            ("assets", "native:asset1"),
         ])
     );
 
@@ -34,8 +42,14 @@ fn test_whitelist_assets() {
         HashMap::from([(
             "chain-1".to_string(),
             vec![
-                AssetInfo::Native("asset2".to_string()),
-                AssetInfo::Native("asset3".to_string()),
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("asset2".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("asset3".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
             ],
         )]),
     );
@@ -44,7 +58,7 @@ fn test_whitelist_assets() {
         Response::default().add_attributes(vec![
             ("action", "whitelist_assets"),
             ("chain_id", "chain-1"),
-            ("assets", "native:asset2,native:asset3")
+            ("assets", "native:asset2,native:asset3"),
         ])
     );
 
@@ -66,7 +80,7 @@ fn test_whitelist_assets() {
             vec![
                 AssetInfo::Native("asset1".to_string()),
                 AssetInfo::Native("asset2".to_string()),
-                AssetInfo::Native("asset3".to_string())
+                AssetInfo::Native("asset3".to_string()),
             ]
         )])
     )
@@ -82,7 +96,10 @@ fn test_whitelist_asset_unauthorized() {
         mock_info("admin", &[]),
         ExecuteMsg::WhitelistAssets(HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("asset1".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("asset1".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )])),
     )
     .unwrap_err();
@@ -98,8 +115,14 @@ fn test_remove_assets() {
         HashMap::from([(
             "chain-1".to_string(),
             vec![
-                AssetInfo::Native("asset1".to_string()),
-                AssetInfo::Native("asset2".to_string()),
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("asset1".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("asset2".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
             ],
         )]),
     );
@@ -109,7 +132,7 @@ fn test_remove_assets() {
         response,
         Response::default().add_attributes(vec![
             ("action", "remove_assets"),
-            ("assets", "native:asset1")
+            ("assets", "native:asset1"),
         ])
     );
 

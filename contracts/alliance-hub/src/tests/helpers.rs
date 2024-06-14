@@ -9,8 +9,9 @@ use cw_asset::{Asset, AssetInfo};
 
 use alliance_protocol::alliance_protocol::{
     AllPendingRewardsQuery, AllianceDelegateMsg, AllianceDelegation, AllianceRedelegateMsg,
-    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetQuery, ChainId, Config,
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes, QueryMsg, StakedBalanceRes,
+    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetInfoWithConfig,
+    AssetQuery, ChainId, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes,
+    QueryMsg, StakedBalanceRes,
 };
 
 use crate::contract::{execute, instantiate};
@@ -49,7 +50,10 @@ pub fn set_alliance_asset(deps: DepsMut) {
         .unwrap();
 }
 
-pub fn whitelist_assets(deps: DepsMut, assets: HashMap<ChainId, Vec<AssetInfo>>) -> Response {
+pub fn whitelist_assets(
+    deps: DepsMut,
+    assets: HashMap<ChainId, Vec<AssetInfoWithConfig>>,
+) -> Response {
     let info = mock_info("gov", &[]);
     let env = mock_env();
 

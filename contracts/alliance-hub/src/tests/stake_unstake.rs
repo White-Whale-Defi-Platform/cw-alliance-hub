@@ -5,11 +5,14 @@ use crate::tests::helpers::{
     query_all_staked_balances, setup_contract, stake, stake_cw20, unstake, unstake_cw20,
     whitelist_assets,
 };
-use alliance_protocol::alliance_protocol::{ExecuteMsg, StakedBalanceRes};
+use alliance_protocol::alliance_protocol::{AssetInfoWithConfig, ExecuteMsg, StakedBalanceRes};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coin, to_json_binary, Addr, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
+use cosmwasm_std::{
+    coin, to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Response, Uint128, WasmMsg,
+};
 use cw_asset::{Asset, AssetInfo};
 use std::collections::HashMap;
+use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
 
 mod cw20_support {
     use super::*;
@@ -22,7 +25,10 @@ mod cw20_support {
             deps.as_mut(),
             HashMap::from([(
                 "chain-1".to_string(),
-                vec![AssetInfo::Cw20(Addr::unchecked("asset1"))],
+                vec![AssetInfoWithConfig {
+                    info: AssetInfo::Cw20(Addr::unchecked("asset1")),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                }],
             )]),
         );
 
@@ -82,13 +88,20 @@ mod cw20_support {
         assert_eq!(total_shares, Uint128::new(200));
 
         let total_balances_res = query_all_staked_balances(deps.as_ref());
+
         assert_eq!(
             total_balances_res,
             vec![StakedBalanceRes {
                 asset: AssetInfo::Cw20(Addr::unchecked("asset1")),
                 balance: Uint128::new(200),
-                shares: Default::default(),
-                config: Default::default(),
+                shares: Uint128::new(200),
+                config: AssetConfigRuntime {
+                    last_taken_s: 1571797419u64,
+                    taken: Default::default(),
+                    harvested: Default::default(),
+                    yearly_take_rate: Decimal::percent(5),
+                    stake_config: Default::default(),
+                },
             }]
         );
     }
@@ -101,7 +114,10 @@ mod cw20_support {
             deps.as_mut(),
             HashMap::from([(
                 "chain-1".to_string(),
-                vec![AssetInfo::Cw20(Addr::unchecked("asset1"))],
+                vec![AssetInfoWithConfig {
+                    info: AssetInfo::Cw20(Addr::unchecked("asset1")),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                }],
             )]),
         );
 
@@ -199,7 +215,10 @@ fn test_stake() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("asset1".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("asset1".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
 
@@ -264,8 +283,14 @@ fn test_stake() {
         vec![StakedBalanceRes {
             asset: AssetInfo::Native("asset1".to_string()),
             balance: Uint128::new(200),
-            shares: Default::default(),
-            config: Default::default(),
+            shares: Uint128::new(200),
+            config: AssetConfigRuntime {
+                last_taken_s: 1571797419u64,
+                taken: Default::default(),
+                harvested: Default::default(),
+                yearly_take_rate: Decimal::percent(5),
+                stake_config: Default::default(),
+            },
         }]
     );
 }
@@ -278,7 +303,10 @@ fn test_stake_invalid() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("asset1".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("asset1".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     // Stake an unwhitelisted asset
@@ -315,7 +343,10 @@ fn test_unstake() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("asset1".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("asset1".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     stake(deps.as_mut(), "user1", 150, "asset1");
@@ -375,7 +406,7 @@ fn test_unstake() {
     assert_eq!(balance, Uint128::new(50));
 
     // User unstakes more than they have, this will return everything the user has but no more
-    let res = unstake(deps.as_mut(), "user1", 100, "asset1");
+    unstake(deps.as_mut(), "user1", 100, "asset1");
 
     let (total_balance, total_shares) = TOTAL_BALANCES_SHARES
         .load(
@@ -396,7 +427,10 @@ fn test_unstake_invalid() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("asset1".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("asset1".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     stake(deps.as_mut(), "user1", 100, "asset1");
