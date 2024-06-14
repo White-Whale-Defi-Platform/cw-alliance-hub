@@ -10,7 +10,7 @@ use cw_asset::AssetInfo;
 use std::collections::HashMap;
 
 use crate::state::{
-    ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG,
+    ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, CONFIG, SHARES,
     TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
 };
 
@@ -63,7 +63,7 @@ fn get_rewards_distribution(deps: Deps) -> StdResult<Binary> {
 fn get_staked_balance(deps: Deps, asset_query: AssetQuery) -> StdResult<Binary> {
     let addr = deps.api.addr_validate(&asset_query.address)?;
     let key = (addr, &asset_query.asset);
-    let user_shares = BALANCES.load(deps.storage, key)?;
+    let user_shares = SHARES.load(deps.storage, key)?;
     let (balance, shares) = TOTAL_BALANCES_SHARES.load(deps.storage, &asset_query.asset)?;
     let config = ASSET_CONFIG
         .may_load(deps.storage, &asset_query.asset)?
@@ -83,7 +83,7 @@ fn get_pending_rewards(deps: Deps, asset_query: AssetQuery) -> StdResult<Binary>
     let key = (addr, &asset_query.asset.clone());
     let user_reward_rate = USER_ASSET_REWARD_RATE.load(deps.storage, key.clone())?;
     let asset_reward_rate = ASSET_REWARD_RATE.load(deps.storage, &asset_query.asset.clone())?;
-    let user_balance = BALANCES.load(deps.storage, key.clone())?;
+    let user_balance = SHARES.load(deps.storage, key.clone())?;
     let unclaimed_rewards = UNCLAIMED_REWARDS
         .load(deps.storage, key)
         .unwrap_or(Uint128::zero());
@@ -105,7 +105,7 @@ fn get_all_staked_balances(deps: Deps, asset_query: AllStakedBalancesQuery) -> S
         // Build the required key to recover the BALANCES
         let (asset_info, _) = asset_res?;
         let stake_key = (addr.clone(), &asset_info);
-        let user_shares = BALANCES
+        let user_shares = SHARES
             .load(deps.storage, stake_key)
             .unwrap_or(Uint128::zero());
         let (balance, shares) = TOTAL_BALANCES_SHARES.load(deps.storage, &asset_info)?;
@@ -136,7 +136,7 @@ fn get_all_pending_rewards(deps: Deps, query: AllPendingRewardsQuery) -> StdResu
         .map(|item| {
             let (asset_info, user_reward_rate) = item?;
             let asset_reward_rate = ASSET_REWARD_RATE.load(deps.storage, &asset_info)?;
-            let user_balance = BALANCES.load(deps.storage, (addr.clone(), &asset_info))?;
+            let user_balance = SHARES.load(deps.storage, (addr.clone(), &asset_info))?;
             let unclaimed_rewards = UNCLAIMED_REWARDS
                 .load(deps.storage, (addr.clone(), &asset_info))
                 .unwrap_or(Uint128::zero());

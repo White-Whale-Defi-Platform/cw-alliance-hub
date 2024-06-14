@@ -1,6 +1,6 @@
 use crate::contract::execute;
 use crate::error::ContractError;
-use crate::state::{BALANCES, TOTAL_BALANCES_SHARES};
+use crate::state::{SHARES, TOTAL_BALANCES_SHARES};
 use crate::tests::helpers::{
     query_all_staked_balances, setup_contract, stake, stake_cw20, unstake, unstake_cw20,
     whitelist_assets,
@@ -44,7 +44,7 @@ mod cw20_support {
             ])
         );
 
-        let balance = BALANCES
+        let balance = SHARES
             .load(
                 deps.as_ref().storage,
                 (
@@ -67,7 +67,7 @@ mod cw20_support {
                 ("share", "100"),
             ])
         );
-        let balance = BALANCES
+        let balance = SHARES
             .load(
                 deps.as_ref().storage,
                 (
@@ -154,7 +154,7 @@ mod cw20_support {
                 }))
         );
 
-        let balance = BALANCES
+        let balance = SHARES
             .load(
                 deps.as_ref().storage,
                 (
@@ -186,7 +186,7 @@ mod cw20_support {
                 }))
         );
 
-        let balance = BALANCES
+        let balance = SHARES
             .load(
                 deps.as_ref().storage,
                 (
@@ -234,7 +234,7 @@ fn test_stake() {
         ])
     );
 
-    let balance = BALANCES
+    let balance = SHARES
         .load(
             deps.as_ref().storage,
             (
@@ -257,7 +257,7 @@ fn test_stake() {
             ("share", "100"),
         ])
     );
-    let balance = BALANCES
+    let balance = SHARES
         .load(
             deps.as_ref().storage,
             (
@@ -367,7 +367,7 @@ fn test_unstake() {
             }))
     );
 
-    let balance = BALANCES
+    let balance = SHARES
         .load(
             deps.as_ref().storage,
             (
@@ -394,7 +394,7 @@ fn test_unstake() {
             }))
     );
 
-    let balance = BALANCES
+    let balance = SHARES
         .load(
             deps.as_ref().storage,
             (

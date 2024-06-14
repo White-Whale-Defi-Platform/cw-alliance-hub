@@ -33,7 +33,7 @@ use alliance_protocol::alliance_protocol::{
 use crate::error::ContractError;
 use crate::migrations::migrate_state;
 use crate::state::{
-    ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, BALANCES, CONFIG, TEMP_BALANCE,
+    ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, CONFIG, SHARES, TEMP_BALANCE,
     TOTAL_BALANCES_SHARES, UNCLAIMED_REWARDS, USER_ASSET_REWARD_RATE, VALIDATORS, WHITELIST,
 };
 use crate::token_factory::{CustomExecuteMsg, DenomUnit, Metadata, TokenExecuteMsg};
@@ -332,7 +332,7 @@ fn stake(
     let (_, asset_available) = _take(&mut deps, &env, &asset, balance, true)?;
     let share_amount = compute_share_amount(shares, amount, asset_available);
 
-    BALANCES.update(
+    SHARES.update(
         deps.storage,
         (recipient.clone(), &asset),
         |balance| -> Result<_, ContractError> {
@@ -398,7 +398,7 @@ fn unstake(
     let mut withdraw_amount = asset.amount;
     let mut share_amount = compute_share_amount(shares, withdraw_amount, asset_available);
 
-    let current_user_share = BALANCES
+    let current_user_share = SHARES
         .may_load(deps.storage, (sender.clone(), &asset.info))?
         .unwrap_or_default();
 
@@ -412,7 +412,7 @@ fn unstake(
         withdraw_amount = compute_balance_amount(shares, share_amount, asset_available)
     }
 
-    BALANCES.save(
+    SHARES.save(
         deps.storage,
         (sender, &asset.info),
         &(current_user_share.checked_sub(share_amount)?),
@@ -485,7 +485,7 @@ fn _claim_reward(
     let asset_reward_rate = ASSET_REWARD_RATE.load(storage, &asset_info)?;
 
     if let Ok(user_reward_rate) = user_reward_rate {
-        let user_staked = BALANCES.load(storage, (user.clone(), &asset_info))?;
+        let user_staked = SHARES.load(storage, (user.clone(), &asset_info))?;
         let rewards = ((asset_reward_rate - user_reward_rate)
             * Decimal::from_atomics(user_staked, 0)?)
         .to_uint_floor();
