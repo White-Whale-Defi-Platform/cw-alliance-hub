@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 
 #[cfg(not(feature = "library"))]
@@ -975,9 +976,12 @@ fn _take(
         // only take if last taken set
         if config.last_taken_s != 0 {
             let take_diff_s = Uint128::new((env.block.time.seconds() - config.last_taken_s).into());
-            // total_balance * yearly_take_rate * taken_diff_s / SECONDS_PER_YEAR
+            let relevant_balance = total_balance.saturating_sub(config.taken);
             let take_amount = config.yearly_take_rate
-                * total_balance.multiply_ratio(take_diff_s, SECONDS_PER_YEAR);
+                * relevant_balance.multiply_ratio(
+                    min(take_diff_s, Uint128::new(SECONDS_PER_YEAR.into())),
+                    SECONDS_PER_YEAR,
+                );
 
             config.taken = config.taken.checked_add(take_amount)?;
         }
