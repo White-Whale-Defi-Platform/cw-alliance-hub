@@ -5,11 +5,12 @@ use alliance_protocol::alliance_protocol::{
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_json_binary, Binary, Deps, Env, Order, StdResult, Uint128};
+use cosmwasm_std::{to_json_binary, Binary, Deps, Env, Order, StdError, StdResult, Uint128};
 use cw_asset::AssetInfo;
 use std::cmp::min;
 use std::collections::HashMap;
 use ve3_shared::constants::SECONDS_PER_YEAR;
+use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
 
 use crate::state::{
     ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, CONFIG, SHARES,
@@ -23,11 +24,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Validators {} => get_validators(deps)?,
         QueryMsg::WhitelistedAssets {} => get_whitelisted_assets(deps)?,
         QueryMsg::RewardDistribution {} => get_rewards_distribution(deps)?,
-        QueryMsg::StakedBalance(asset_query) => get_staked_balance(deps, asset_query)?,
+        QueryMsg::StakedBalance(asset_query) => get_staked_balance(deps, env, asset_query)?,
         QueryMsg::PendingRewards(asset_query) => get_pending_rewards(deps, asset_query)?,
         QueryMsg::AllStakedBalances(query) => get_all_staked_balances(deps, env, query)?,
         QueryMsg::AllPendingRewards(query) => get_all_pending_rewards(deps, query)?,
-        QueryMsg::TotalStakedBalances {} => get_total_staked_balances(deps)?,
+        QueryMsg::TotalStakedBalances {} => get_total_staked_balances(deps, env)?,
     })
 }
 
@@ -62,14 +63,16 @@ fn get_rewards_distribution(deps: Deps) -> StdResult<Binary> {
     to_json_binary(&asset_rewards_distr)
 }
 
-fn get_staked_balance(deps: Deps, asset_query: AssetQuery) -> StdResult<Binary> {
+fn get_staked_balance(deps: Deps, env: Env, asset_query: AssetQuery) -> StdResult<Binary> {
     let addr = deps.api.addr_validate(&asset_query.address)?;
     let key = (addr, &asset_query.asset);
     let user_shares = SHARES.load(deps.storage, key)?;
     let (balance, shares) = TOTAL_BALANCES_SHARES.load(deps.storage, &asset_query.asset)?;
-    let config = ASSET_CONFIG
+    let mut config = ASSET_CONFIG
         .may_load(deps.storage, &asset_query.asset)?
         .unwrap_or_default();
+
+    compute_take_amount(&env, balance, &mut config)?;
 
     to_json_binary(&StakedBalanceRes {
         asset: asset_query.asset,
@@ -77,6 +80,25 @@ fn get_staked_balance(deps: Deps, asset_query: AssetQuery) -> StdResult<Binary> 
         shares: user_shares,
         config,
     })
+}
+
+fn compute_take_amount(
+    env: &Env,
+    balance: Uint128,
+    config: &mut AssetConfigRuntime,
+) -> Result<(), StdError> {
+    if config.last_taken_s != 0 {
+        let take_diff_s = Uint128::new((env.block.time.seconds() - config.last_taken_s).into());
+        let relevant_balance = balance.saturating_sub(config.taken);
+        let take_amount = config.yearly_take_rate
+            * relevant_balance.multiply_ratio(
+                min(take_diff_s, Uint128::new(SECONDS_PER_YEAR.into())),
+                SECONDS_PER_YEAR,
+            );
+        config.last_taken_s = env.block.time.seconds();
+        config.taken = config.taken.checked_add(take_amount)?
+    };
+    Ok(())
 }
 
 fn get_pending_rewards(deps: Deps, asset_query: AssetQuery) -> StdResult<Binary> {
@@ -117,17 +139,7 @@ fn get_all_staked_balances(
         let (balance, shares) = TOTAL_BALANCES_SHARES.load(deps.storage, &asset_info)?;
         let mut config = ASSET_CONFIG.load(deps.storage, &asset_info)?;
 
-        if config.last_taken_s != 0 {
-            let take_diff_s = Uint128::new((env.block.time.seconds() - config.last_taken_s).into());
-            let relevant_balance = balance.saturating_sub(config.taken);
-            let take_amount = config.yearly_take_rate
-                * relevant_balance.multiply_ratio(
-                    min(take_diff_s, Uint128::new(SECONDS_PER_YEAR.into())),
-                    SECONDS_PER_YEAR,
-                );
-            config.last_taken_s = env.block.time.seconds();
-            config.taken = config.taken.checked_add(take_amount)?
-        };
+        compute_take_amount(&env, balance, &mut config)?;
 
         // Append the request
         res.push(StakedBalanceRes {
@@ -170,16 +182,18 @@ fn get_all_pending_rewards(deps: Deps, query: AllPendingRewardsQuery) -> StdResu
     to_json_binary(&all_pending_rewards?)
 }
 
-fn get_total_staked_balances(deps: Deps) -> StdResult<Binary> {
+fn get_total_staked_balances(deps: Deps, env: Env) -> StdResult<Binary> {
     let total_staked_balances: StdResult<Vec<StakedBalanceRes>> = TOTAL_BALANCES_SHARES
         .range(deps.storage, None, None, Order::Ascending)
         .map(|total_balance| -> StdResult<StakedBalanceRes> {
             let (asset, (balance, shares)) = total_balance?;
-            let config = ASSET_CONFIG.load(deps.storage, &asset)?;
+            let mut config = ASSET_CONFIG.load(deps.storage, &asset)?;
+
+            compute_take_amount(&env, balance, &mut config)?;
 
             Ok(StakedBalanceRes {
                 asset,
-                balance,
+                balance: compute_balance_amount(shares, shares, balance.checked_sub(config.taken)?),
                 shares,
                 config,
             })
