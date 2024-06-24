@@ -745,6 +745,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "osmosis-std-derive"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a455e262a6fdfd3914f3a4e11e6bc0ce491901cb9d507d7856d7ef6e129e90c6"
+dependencies = [
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1121,9 +1133,9 @@ checksum = "b15811caf2415fb889178633e7724bad2509101cde276048e013b9def5e51fa0"
 
 [[package]]
 name = "ve3-shared"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ac896aa1baaacf667229dea7e4663533041b49e8cf6463f1ae6ff6c3b982a6a"
+checksum = "09fbc0ec021c3a51b9be5f07cee2fad4343a54726ea078da4b09be006ca5ef81"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1134,6 +1146,9 @@ dependencies = [
  "cw20",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "osmosis-std-derive",
+ "prost",
+ "prost-types",
  "schemars",
  "semver",
  "serde",

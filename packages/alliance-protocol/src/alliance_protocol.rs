@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo};
 use std::collections::{HashMap, HashSet};
-use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
+use ve3_shared::msgs_asset_staking::StakedBalanceRes;
 
 #[cw_serde]
 pub struct Config {
@@ -163,14 +163,6 @@ pub struct AllPendingRewardsQuery {
 
 #[cw_serde]
 pub struct MigrateMsg {}
-
-#[cw_serde]
-pub struct StakedBalanceRes {
-    pub asset: AssetInfo,
-    pub balance: Uint128,
-    pub shares: Uint128,
-    pub config: AssetConfigRuntime,
-}
 
 #[cw_serde]
 pub struct PendingRewardsRes {

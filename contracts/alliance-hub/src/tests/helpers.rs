@@ -6,12 +6,13 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo};
+use ve3_shared::msgs_asset_staking::StakedBalanceRes;
 
 use alliance_protocol::alliance_protocol::{
     AllPendingRewardsQuery, AllianceDelegateMsg, AllianceDelegation, AllianceRedelegateMsg,
     AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetInfoWithConfig,
     AssetQuery, ChainId, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes,
-    QueryMsg, StakedBalanceRes,
+    QueryMsg,
 };
 
 use crate::contract::{execute, instantiate};

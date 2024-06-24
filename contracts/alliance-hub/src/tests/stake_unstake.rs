@@ -5,17 +5,20 @@ use crate::tests::helpers::{
     query_all_staked_balances, setup_contract, stake, stake_cw20, unstake, unstake_cw20,
     whitelist_assets,
 };
-use alliance_protocol::alliance_protocol::{AssetInfoWithConfig, ExecuteMsg, StakedBalanceRes};
+use alliance_protocol::alliance_protocol::{AssetInfoWithConfig, ExecuteMsg};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
     coin, to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Response, Uint128, WasmMsg,
 };
 use cw_asset::{Asset, AssetInfo};
 use std::collections::HashMap;
-use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
+use ve3_shared::extensions::asset_info_ext::AssetInfoExt;
+use ve3_shared::msgs_asset_staking::{AssetConfigRuntime, StakedBalanceRes};
 
 mod cw20_support {
     use super::*;
+    use ve3_shared::extensions::asset_info_ext::AssetInfoExt;
+    use ve3_shared::msgs_asset_staking::StakedBalanceRes;
 
     #[test]
     fn test_stake_cw20() {
@@ -92,8 +95,7 @@ mod cw20_support {
         assert_eq!(
             total_balances_res,
             vec![StakedBalanceRes {
-                asset: AssetInfo::Cw20(Addr::unchecked("asset1")),
-                balance: Uint128::new(200),
+                asset: AssetInfo::Cw20(Addr::unchecked("asset1")).with_balance(Uint128::new(200)),
                 shares: Uint128::new(200),
                 config: AssetConfigRuntime {
                     last_taken_s: 1571797419u64,
@@ -281,8 +283,7 @@ fn test_stake() {
     assert_eq!(
         total_balances_res,
         vec![StakedBalanceRes {
-            asset: AssetInfo::Native("asset1".to_string()),
-            balance: Uint128::new(200),
+            asset: AssetInfo::Native("asset1".to_string()).with_balance(Uint128::new(200)),
             shares: Uint128::new(200),
             config: AssetConfigRuntime {
                 last_taken_s: 1571797419u64,

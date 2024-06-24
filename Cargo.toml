@@ -40,6 +40,6 @@ thiserror = { version = "1.0.38" }
 cw2 = "1.1.2"
 cw20 ="1.1.2"
 semver = "1.0.22"
-ve3-shared = "0.9.0"
+ve3-shared = "0.9.1"
 
 alliance-protocol = { path = "./packages/alliance-protocol" }

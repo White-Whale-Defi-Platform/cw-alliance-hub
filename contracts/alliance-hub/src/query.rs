@@ -1,7 +1,7 @@
 use crate::contract::compute_balance_amount;
 use alliance_protocol::alliance_protocol::{
     AllPendingRewardsQuery, AllStakedBalancesQuery, AssetQuery, PendingRewardsRes, QueryMsg,
-    StakedBalanceRes, WhitelistedAssetsResponse,
+    WhitelistedAssetsResponse,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -10,7 +10,8 @@ use cw_asset::AssetInfo;
 use std::cmp::min;
 use std::collections::HashMap;
 use ve3_shared::constants::SECONDS_PER_YEAR;
-use ve3_shared::msgs_asset_staking::AssetConfigRuntime;
+use ve3_shared::extensions::asset_info_ext::AssetInfoExt;
+use ve3_shared::msgs_asset_staking::{AssetConfigRuntime, StakedBalanceRes};
 
 use crate::state::{
     ASSET_CONFIG, ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, CONFIG, SHARES,
@@ -75,8 +76,11 @@ fn get_staked_balance(deps: Deps, env: Env, asset_query: AssetQuery) -> StdResul
     compute_take_amount(&env, balance, &mut config)?;
 
     to_json_binary(&StakedBalanceRes {
-        asset: asset_query.asset,
-        balance: compute_balance_amount(shares, user_shares, balance.checked_sub(config.taken)?),
+        asset: asset_query.asset.with_balance(compute_balance_amount(
+            shares,
+            user_shares,
+            balance.checked_sub(config.taken)?,
+        )),
         shares: user_shares,
         config,
     })
@@ -143,12 +147,11 @@ fn get_all_staked_balances(
 
         // Append the request
         res.push(StakedBalanceRes {
-            asset: asset_info,
-            balance: compute_balance_amount(
+            asset: asset_info.with_balance(compute_balance_amount(
                 shares,
                 user_shares,
                 balance.checked_sub(config.taken)?,
-            ),
+            )),
             shares: user_shares,
             config,
         })
@@ -192,8 +195,11 @@ fn get_total_staked_balances(deps: Deps, env: Env) -> StdResult<Binary> {
             compute_take_amount(&env, balance, &mut config)?;
 
             Ok(StakedBalanceRes {
-                asset,
-                balance: compute_balance_amount(shares, shares, balance.checked_sub(config.taken)?),
+                asset: asset.with_balance(compute_balance_amount(
+                    shares,
+                    shares,
+                    balance.checked_sub(config.taken)?,
+                )),
                 shares,
                 config,
             })
