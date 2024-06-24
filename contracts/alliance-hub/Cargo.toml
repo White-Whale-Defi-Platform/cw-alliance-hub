@@ -18,17 +18,15 @@ library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["stargate"] }
-cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw_storage_plus_016 = { workspace = true }
-cw_storage_plus_120 = { workspace = true }
-cw_asset_v2 = { workspace = true }
-cw_asset_v3 = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-asset = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 alliance-protocol = { workspace = true }
 semver = { workspace = true }
+ve3-shared = { workspace = true }
 
 cw2 = "1.0.1"
 cw20 = "1.0.1"

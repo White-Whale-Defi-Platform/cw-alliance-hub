@@ -5,13 +5,14 @@ use cosmwasm_std::{
     coin, from_json, to_json_binary, Decimal, Deps, DepsMut, Response, StdResult, Uint128,
 };
 use cw20::Cw20ReceiveMsg;
-use cw_asset_v3::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo};
+use ve3_shared::msgs_asset_staking::StakedBalanceRes;
 
-use alliance_protocol::alliance_oracle_types::ChainId;
 use alliance_protocol::alliance_protocol::{
     AllPendingRewardsQuery, AllianceDelegateMsg, AllianceDelegation, AllianceRedelegateMsg,
-    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetQuery, Config,
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes, QueryMsg, StakedBalanceRes,
+    AllianceRedelegation, AllianceUndelegateMsg, AssetDistribution, AssetInfoWithConfig,
+    AssetQuery, ChainId, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PendingRewardsRes,
+    QueryMsg,
 };
 
 use crate::contract::{execute, instantiate};
@@ -32,6 +33,8 @@ pub fn setup_contract(deps: DepsMut) -> Response<CustomExecuteMsg> {
         operator: "operator".to_string(),
         alliance_token_denom: "ualliance".to_string(),
         reward_denom: "uluna".to_string(),
+        take_rate_taker: "take_rate_taker".to_string(),
+        default_yearly_take_rate: Decimal::percent(5),
     };
     instantiate(deps, env, info, init_msg).unwrap()
 }
@@ -48,7 +51,10 @@ pub fn set_alliance_asset(deps: DepsMut) {
         .unwrap();
 }
 
-pub fn whitelist_assets(deps: DepsMut, assets: HashMap<ChainId, Vec<AssetInfo>>) -> Response {
+pub fn whitelist_assets(
+    deps: DepsMut,
+    assets: HashMap<ChainId, Vec<AssetInfoWithConfig>>,
+) -> Response {
     let info = mock_info("gov", &[]);
     let env = mock_env();
 

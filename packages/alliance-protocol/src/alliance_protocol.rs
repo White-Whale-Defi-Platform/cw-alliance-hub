@@ -1,9 +1,9 @@
-use crate::alliance_oracle_types::ChainId;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw_asset_v3::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo};
 use std::collections::{HashMap, HashSet};
+use ve3_shared::msgs_asset_staking::StakedBalanceRes;
 
 #[cw_serde]
 pub struct Config {
@@ -11,10 +11,12 @@ pub struct Config {
     pub controller: Addr,
     pub oracle: Addr,
     pub operator: Addr,
+    pub take_rate_taker: Addr,
     pub last_reward_update_timestamp: Timestamp,
     pub alliance_token_denom: String,
     pub alliance_token_supply: Uint128,
     pub reward_denom: String,
+    pub default_yearly_take_rate: Decimal,
 }
 
 #[cw_serde]
@@ -30,7 +32,9 @@ pub struct InstantiateMsg {
     pub alliance_token_denom: String,
     pub oracle: String,
     pub operator: String,
+    pub take_rate_taker: String,
     pub reward_denom: String,
+    pub default_yearly_take_rate: Decimal,
 }
 
 #[cw_serde]
@@ -44,7 +48,17 @@ pub enum ExecuteMsg {
     UpdateRewards {},
 
     // Privileged functions
-    WhitelistAssets(HashMap<ChainId, Vec<AssetInfo>>),
+
+    // controller
+    UpdateAssetConfig(AssetInfoWithConfig),
+
+    // operator
+    DistributeTakeRate {
+        update: Option<bool>,
+        assets: Option<Vec<AssetInfo>>,
+    },
+
+    WhitelistAssets(HashMap<ChainId, Vec<AssetInfoWithConfig>>),
     RemoveAssets(Vec<AssetInfo>),
     UpdateRewardsCallback {},
     AllianceDelegate(AllianceDelegateMsg),
@@ -58,6 +72,8 @@ pub enum ExecuteMsg {
         controller: Option<String>,
         oracle: Option<String>,
         operator: Option<String>,
+        take_rate_taker: Option<String>,
+        default_yearly_take_rate: Option<Decimal>,
     },
 }
 
@@ -126,6 +142,7 @@ pub enum QueryMsg {
     TotalStakedBalances {},
 }
 
+pub type ChainId = String;
 pub type WhitelistedAssetsResponse = HashMap<ChainId, Vec<AssetInfo>>;
 
 #[cw_serde]
@@ -148,14 +165,14 @@ pub struct AllPendingRewardsQuery {
 pub struct MigrateMsg {}
 
 #[cw_serde]
-pub struct StakedBalanceRes {
-    pub asset: AssetInfo,
-    pub balance: Uint128,
-}
-
-#[cw_serde]
 pub struct PendingRewardsRes {
     pub staked_asset: AssetInfo,
     pub reward_asset: AssetInfo,
     pub rewards: Uint128,
+}
+
+#[cw_serde]
+pub struct AssetInfoWithConfig {
+    pub info: AssetInfo,
+    pub yearly_take_rate: Option<Decimal>,
 }

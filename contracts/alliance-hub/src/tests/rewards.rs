@@ -5,16 +5,18 @@ use cosmwasm_std::{
     coin, coins, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg,
     Uint128, WasmMsg,
 };
-use cw_asset_v3::AssetInfo;
+use cw_asset::AssetInfo;
 use terra_proto_rs::alliance::alliance::MsgClaimDelegationRewards;
 use terra_proto_rs::traits::Message;
 
-use alliance_protocol::alliance_protocol::{AssetDistribution, ExecuteMsg, PendingRewardsRes};
+use alliance_protocol::alliance_protocol::{
+    AssetDistribution, AssetInfoWithConfig, ExecuteMsg, PendingRewardsRes,
+};
 
 use crate::contract::execute;
 use crate::error::ContractError;
 use crate::state::{
-    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, TEMP_BALANCE, TOTAL_BALANCES,
+    ASSET_REWARD_DISTRIBUTION, ASSET_REWARD_RATE, TEMP_BALANCE, TOTAL_BALANCES_SHARES,
     USER_ASSET_REWARD_RATE, VALIDATORS,
 };
 use crate::tests::helpers::{
@@ -104,18 +106,18 @@ fn update_reward_callback() {
     setup_contract(deps.as_mut());
     set_alliance_asset(deps.as_mut());
 
-    TOTAL_BALANCES
+    TOTAL_BALANCES_SHARES
         .save(
             deps.as_mut().storage,
             &AssetInfo::Native("aWHALE".to_string()),
-            &Uint128::new(1000000),
+            &(Uint128::new(1000000), Uint128::new(1000000)),
         )
         .unwrap();
-    TOTAL_BALANCES
+    TOTAL_BALANCES_SHARES
         .save(
             deps.as_mut().storage,
             &AssetInfo::Native("bWHALE".to_string()),
-            &Uint128::new(100000),
+            &(Uint128::new(100000), Uint128::new(100000)),
         )
         .unwrap();
 
@@ -192,7 +194,10 @@ fn claim_user_rewards() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("aWHALE".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("aWHALE".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     stake(deps.as_mut(), "user1", 1000000, "aWHALE");
@@ -347,7 +352,10 @@ fn claim_user_rewards_after_staking() {
         deps.as_mut(),
         HashMap::from([(
             "chain-1".to_string(),
-            vec![AssetInfo::Native("aWHALE".to_string())],
+            vec![AssetInfoWithConfig {
+                info: AssetInfo::Native("aWHALE".to_string()),
+                yearly_take_rate: Some(Decimal::percent(5)),
+            }],
         )]),
     );
     stake(deps.as_mut(), "user1", 1000000, "aWHALE");
@@ -420,8 +428,14 @@ fn claim_rewards_after_staking_and_unstaking() {
         HashMap::from([(
             "chain-1".to_string(),
             vec![
-                AssetInfo::Native("aWHALE".to_string()),
-                AssetInfo::Native("bWHALE".to_string()),
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("aWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("bWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
             ],
         )]),
     );
@@ -511,8 +525,14 @@ fn claim_rewards_after_rebalancing_emissions() {
         HashMap::from([(
             "chain-1".to_string(),
             vec![
-                AssetInfo::Native("aWHALE".to_string()),
-                AssetInfo::Native("bWHALE".to_string()),
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("aWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
+                AssetInfoWithConfig {
+                    info: AssetInfo::Native("bWHALE".to_string()),
+                    yearly_take_rate: Some(Decimal::percent(5)),
+                },
             ],
         )]),
     );

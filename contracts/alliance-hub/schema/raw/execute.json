@@ -67,6 +67,48 @@
     {
       "type": "object",
       "required": [
+        "update_asset_config"
+      ],
+      "properties": {
+        "update_asset_config": {
+          "$ref": "#/definitions/AssetInfoWithConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "distribute_take_rate"
+      ],
+      "properties": {
+        "distribute_take_rate": {
+          "type": "object",
+          "properties": {
+            "assets": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/AssetInfoBase_for_Addr"
+              }
+            },
+            "update": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "whitelist_assets"
       ],
       "properties": {
@@ -75,7 +117,7 @@
           "additionalProperties": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/AssetInfoBase_for_Addr"
+              "$ref": "#/definitions/AssetInfoWithConfig"
             }
           }
         }
@@ -202,6 +244,16 @@
                 "null"
               ]
             },
+            "default_yearly_take_rate": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "governance": {
               "type": [
                 "string",
@@ -215,6 +267,12 @@
               ]
             },
             "oracle": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "take_rate_taker": {
               "type": [
                 "string",
                 "null"
@@ -314,7 +372,7 @@
       "additionalProperties": false
     },
     "AssetBase_for_Addr": {
-      "description": "Represents a fungible asset with a known amount\n\nEach asset instance contains two values: [`info`], which specifies the asset's type (CW20 or native), and its [`amount`], which specifies the asset's amount",
+      "description": "Represents a fungible asset with a known amount\n\nEach asset instance contains two values: `info`, which specifies the asset's type (CW20 or native), and its `amount`, which specifies the asset's amount.",
       "type": "object",
       "required": [
         "amount",
@@ -357,7 +415,7 @@
       "additionalProperties": false
     },
     "AssetInfoBase_for_Addr": {
-      "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+      "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
       "oneOf": [
         {
           "type": "object",
@@ -382,30 +440,30 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "cw1155"
-          ],
-          "properties": {
-            "cw1155": {
-              "type": "array",
-              "items": [
-                {
-                  "$ref": "#/definitions/Addr"
-                },
-                {
-                  "type": "string"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false
         }
       ]
+    },
+    "AssetInfoWithConfig": {
+      "type": "object",
+      "required": [
+        "info"
+      ],
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/AssetInfoBase_for_Addr"
+        },
+        "yearly_take_rate": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
