@@ -34,7 +34,7 @@ fn test_setup_contract() {
     // alliance_token_denom and alliance_token_supply
     // will be populated on reply.
     let query_config = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
-    let config: Config = from_json(&query_config).unwrap();
+    let config: Config = from_json(query_config).unwrap();
     assert_eq!(
         config,
         Config {
@@ -106,7 +106,7 @@ fn test_reply_create_token() {
     );
 
     let query_config = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
-    let config: Config = from_json(&query_config).unwrap();
+    let config: Config = from_json(query_config).unwrap();
     assert_eq!(
         config,
         Config {
@@ -138,7 +138,7 @@ fn test_update_config() {
         take_rate_taker,
         default_yearly_take_rate,
         ..
-    } = from_json(&query_config).unwrap();
+    } = from_json(query_config).unwrap();
 
     assert_eq!(governance, Addr::unchecked("gov"));
     assert_eq!(controller, Addr::unchecked("controller"));
@@ -204,7 +204,7 @@ fn test_update_config() {
         take_rate_taker,
         default_yearly_take_rate,
         ..
-    } = from_json(&query_config).unwrap();
+    } = from_json(query_config).unwrap();
 
     assert_eq!(governance, Addr::unchecked("new_gov"));
     assert_eq!(controller, Addr::unchecked("new_controller"));

@@ -198,7 +198,7 @@ fn receive_cw20(
 ) -> Result<Response, ContractError> {
     let sender = deps.api.addr_validate(&cw20_msg.sender)?;
 
-    match from_json(&cw20_msg.msg)? {
+    match from_json(cw20_msg.msg)? {
         Cw20HookMsg::Stake {} => {
             if cw20_msg.amount.is_zero() {
                 return Err(ContractError::AmountCannotBeZero {});
