@@ -8,11 +8,10 @@ exclude = []
 
 [dependencies]
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw_asset_v2 = { workspace = true }
-cw_asset_v3 = { workspace = true }
+cw-asset = { workspace = true }
 cw20 = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
+ve3-shared = { workspace = true }
